@@ -128,6 +128,9 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
 .btn-del{background:none;border:1.5px solid var(--linea);border-radius:8px;padding:5px 9px;cursor:pointer;font-size:.95rem;line-height:1}
 .btn-del:hover{border-color:var(--error);background:#fdf3f2}
 .contador{font-size:.82rem;color:var(--gris)}
+.admin-filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.admin-filtros input[type=text]{flex:2;min-width:220px}
+.admin-filtros select{flex:1;min-width:160px}
 
 /* ---------- Impresión ---------- */
 #printArea{display:none}
@@ -408,8 +411,20 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
       <h2>Matrículas registradas 2027</h2>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn btn-ghost" onclick="volverInicio()">← Inicio</button>
-        <button class="btn btn-gold" onclick="descargarExcel()">⬇️ Descargar Excel</button>
+        <button class="btn btn-gold" id="btnDescargarExcel" onclick="descargarExcel()">⬇️ Descargar Excel</button>
       </div>
+    </div>
+    <div class="admin-filtros">
+      <input type="text" id="fBusqueda" placeholder="🔎 Buscar por nombre, RUT o apoderado…" oninput="aplicarFiltrosAdmin()">
+      <select id="fTipo" onchange="aplicarFiltrosAdmin()">
+        <option value="">Todos los tipos</option>
+        <option value="nuevo">Estudiante nuevo</option>
+        <option value="antiguo">Estudiante antiguo</option>
+      </select>
+      <select id="fCurso" onchange="aplicarFiltrosAdmin()">
+        <option value="">Todos los cursos</option>
+      </select>
+      <button type="button" class="btn btn-ghost" onclick="limpiarFiltrosAdmin()">Limpiar filtros</button>
     </div>
     <p class="contador" id="contador"></p><br>
     <div class="tabla-scroll">
@@ -536,6 +551,7 @@ let tipoEstudiante = "nuevo";
 let fichaActual = null;
 let yaImprimio = false;
 let codigoPreCargado = null;
+let rutAutocompletado2026 = null; // evita repetir la misma consulta a Firebase
 
 // Modo apoderado: se activa al abrir el link con ?apoderado (desde el QR)
 const MODO_APODERADO = new URLSearchParams(location.search).has("apoderado");
@@ -561,6 +577,7 @@ function aviso(t,x){ document.getElementById("avisoTitulo").textContent=t; docum
 function iniciarFicha(tipo){
   tipoEstudiante = tipo;
   codigoPreCargado = null;
+  rutAutocompletado2026 = null;
   document.getElementById("ficha").reset();
   document.querySelectorAll(".subfields").forEach(s=>s.classList.remove("show"));
   document.querySelectorAll("input.bad,select.bad").forEach(i=>i.classList.remove("bad"));
@@ -568,6 +585,9 @@ function iniciarFicha(tipo){
   document.getElementById("tipoLabel").textContent = tipo==="nuevo" ? "Estudiante nuevo" : "Estudiante antiguo";
   document.querySelectorAll(".solo-nuevo").forEach(el=>el.style.display = tipo==="nuevo" ? "" : "none");
   document.querySelectorAll(".solo-antiguo").forEach(el=>el.style.display = tipo==="antiguo" ? "" : "none");
+  document.getElementById("e_rut_hint").textContent = tipo==="antiguo"
+    ? "Se valida el dígito verificador automáticamente. Si el estudiante estuvo matriculado en 2026, al salir del campo se completarán la dirección y los datos del apoderado."
+    : "Se valida el dígito verificador automáticamente.";
   yaImprimio = false;
   mostrar("scr-form");
 }
@@ -600,6 +620,43 @@ function rutValido(r){
 ["e_rut","a_rut","s_rut"].forEach(id=>{
   const inp=document.getElementById(id);
   inp.addEventListener("input",()=>{ inp.value = formatearRut(inp.value); });
+});
+
+/* ---------- Autocompletar datos de apoderado desde la matrícula 2026 (solo estudiantes antiguos) ---------- */
+function rellenarSiVacio(id, valor){
+  if (!valor) return;
+  const el = document.getElementById(id);
+  if (el && !el.value.trim()) el.value = valor;
+}
+document.getElementById("e_rut").addEventListener("blur", async ()=>{
+  if (tipoEstudiante !== "antiguo" || !db) return;
+  const rutInput = document.getElementById("e_rut");
+  const rut = rutInput.value.trim();
+  if (!rutValido(rut)) return;
+  const key = limpiarRut(rut);
+  if (key === rutAutocompletado2026) return;
+  rutAutocompletado2026 = key;
+  try{
+    const snap = await db.ref("matriculas2026/"+key).get();
+    if (!snap.exists()) return;
+    const d = snap.val() || {};
+    rellenarSiVacio("e_dir", [d.direccion, d.comuna].filter(Boolean).join(", "));
+    const ap = d.apoderado || {};
+    rellenarSiVacio("a_nombre", ap.nombre);
+    if (ap.rut) rellenarSiVacio("a_rut", formatearRut(ap.rut));
+    rellenarSiVacio("a_cel", ap.celular);
+    rellenarSiVacio("a_mail", ap.correo);
+    const sup = d.suplente || {};
+    if (sup.nombre){
+      rellenarSiVacio("s_nombre", sup.nombre);
+      rellenarSiVacio("s_cel", sup.celular);
+      rellenarSiVacio("s_mail", sup.correo);
+      const supSi = document.querySelector('input[name="sup"][value="si"]');
+      if (supSi && !supSi.checked){ supSi.checked = true; toggleSub("sup"); }
+    }
+    aviso("Datos de matrícula 2026 encontrados",
+      "Se completaron automáticamente la dirección y los datos del apoderado a partir de la matrícula 2026. Revísalos junto al apoderado antes de continuar.");
+  }catch(err){ console.error("Autocompletar 2026:", err); }
 });
 
 /* ---------- Validación ---------- */
@@ -942,6 +999,7 @@ ${NOMBRE_COLEGIO}`;
 
 /* ---------- Panel admin ---------- */
 let registros = [];
+let registrosVisibles = [];
 let claveEliminarPendiente = null;
 function pedirClaveAdmin(){ document.getElementById("inputClave").value=""; abrir("ovClave"); setTimeout(()=>document.getElementById("inputClave").focus(),100); }
 document.getElementById("inputClave").addEventListener("keydown",e=>{ if(e.key==="Enter") validarClave(); });
@@ -978,8 +1036,54 @@ async function cargarAdmin(){
       if (!isNaN(na) && !isNaN(nb)) return na - nb;
       return (a.fechaRegistro > b.fechaRegistro) ? 1 : -1;
     });
-    document.getElementById("contador").textContent = registros.length + " matrícula(s) registrada(s).";
-    tb.innerHTML = registros.length ? registros.map(r=>`
+    poblarFiltroCursosAdmin();
+    aplicarFiltrosAdmin();
+  }catch(err){
+    console.error(err);
+    tb.innerHTML = `<tr><td colspan="9">No se pudieron cargar las matrículas: ${err.message}</td></tr>`;
+  }
+}
+
+function poblarFiltroCursosAdmin(){
+  const sel = document.getElementById("fCurso");
+  const actual = sel.value;
+  const cursos = [...new Set(registros.map(r => r.estudiante.cursoMatricula || r.estudiante.cursoAnterior || "").filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Todos los cursos</option>' + cursos.map(c=>`<option value="${c}">${c}</option>`).join("");
+  if (cursos.includes(actual)) sel.value = actual;
+}
+
+function limpiarFiltrosAdmin(){
+  document.getElementById("fBusqueda").value = "";
+  document.getElementById("fTipo").value = "";
+  document.getElementById("fCurso").value = "";
+  aplicarFiltrosAdmin();
+}
+
+function aplicarFiltrosAdmin(){
+  const q = document.getElementById("fBusqueda").value.trim().toLowerCase();
+  const tipo = document.getElementById("fTipo").value;
+  const curso = document.getElementById("fCurso").value;
+  const filtrados = registros.filter(r=>{
+    if (tipo && r.tipo !== tipo) return false;
+    if (curso && (r.estudiante.cursoMatricula || r.estudiante.cursoAnterior || "") !== curso) return false;
+    if (q){
+      const texto = [r.folio, r.estudiante.nombre, r.estudiante.rut, r.apoderado.nombre, r.apoderado.rut].join(" ").toLowerCase();
+      if (!texto.includes(q)) return false;
+    }
+    return true;
+  });
+  renderTablaAdmin(filtrados);
+}
+
+function renderTablaAdmin(lista){
+  registrosVisibles = lista;
+  const tb = document.getElementById("tbodyAdmin");
+  document.getElementById("contador").textContent = (lista.length===registros.length)
+    ? lista.length + " matrícula(s) registrada(s)."
+    : lista.length + " de " + registros.length + " matrícula(s) (filtro aplicado).";
+  const btnDesc = document.getElementById("btnDescargarExcel");
+  btnDesc.textContent = (lista.length===registros.length) ? "⬇️ Descargar Excel" : "⬇️ Descargar Excel (filtrado)";
+  tb.innerHTML = lista.length ? lista.map(r=>`
       <tr>
         <td>${r.folio}</td><td>${r.fechaRegistro}</td>
         <td><span class="pill ${r.tipo}">${r.tipo}</span></td>
@@ -987,11 +1091,7 @@ async function cargarAdmin(){
         <td>${r.tipo==="antiguo" ? (r.estudiante.cursoMatricula ?? r.estudiante.cursoAnterior ?? "—") : (r.estudiante.procedencia ?? "—")}</td>
         <td>${r.apoderado.nombre ?? "—"}</td><td>${r.apoderado.celular ?? "—"}</td>
         <td><button class="btn-del" title="Eliminar matrícula" onclick="confirmarEliminar('${r._key}','${(r.estudiante.nombre ?? "este estudiante").replace(/'/g,"\\'")}')">🗑️</button></td>
-      </tr>`).join("") : `<tr><td colspan="9">Aún no hay matrículas registradas.</td></tr>`;
-  }catch(err){
-    console.error(err);
-    tb.innerHTML = `<tr><td colspan="9">No se pudieron cargar las matrículas: ${err.message}</td></tr>`;
-  }
+      </tr>`).join("") : (registros.length ? `<tr><td colspan="9">Ninguna matrícula coincide con el filtro.</td></tr>` : `<tr><td colspan="9">Aún no hay matrículas registradas.</td></tr>`);
 }
 
 function confirmarEliminar(key, nombre){
@@ -1015,8 +1115,8 @@ async function eliminarMatricula(){
   }
 }
 function descargarExcel(){
-  if (!registros.length){ aviso("Sin datos","No hay matrículas para exportar."); return; }
-  const filas = registros.map(r=>({
+  if (!registrosVisibles.length){ aviso("Sin datos","No hay matrículas para exportar con el filtro actual."); return; }
+  const filas = registrosVisibles.map(r=>({
     "Folio": r.folio, "Fecha registro": r.fechaRegistro,
     "Tipo estudiante": r.tipo==="nuevo"?"Nuevo":"Antiguo",
     "Nombre estudiante": r.estudiante.nombre, "RUT estudiante": r.estudiante.rut,
@@ -1037,7 +1137,8 @@ function descargarExcel(){
   const ws = XLSX.utils.json_to_sheet(filas);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Matrículas 2027");
-  XLSX.writeFile(wb, "Matriculas_INCOSAF_2027.xlsx");
+  const filtrado = registrosVisibles.length !== registros.length;
+  XLSX.writeFile(wb, filtrado ? "Matriculas_INCOSAF_2027_filtrado.xlsx" : "Matriculas_INCOSAF_2027.xlsx");
 }
 </script>
 </body>
