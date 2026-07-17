@@ -103,8 +103,6 @@ input.bad{border-color:var(--error);background:#fdf3f2}
 .ficha-datos .dato .label{display:block;font-size:.68rem;color:var(--gris);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
 .ficha-datos .dato .valor{display:block}
 .ficha-subtitulo{margin:16px 0 6px;font-size:.85rem;color:var(--azul);font-weight:800;text-transform:uppercase;letter-spacing:.5px}
-.ficha-logo-top{text-align:center;margin-bottom:10px}
-.ficha-logo-top img{width:56px;height:56px;object-fit:contain}
 
 /* ---------- Modal ---------- */
 .overlay{display:none;position:fixed;inset:0;background:rgba(13,26,42,.55);z-index:50;align-items:center;justify-content:center;padding:16px}
@@ -165,7 +163,10 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
   .pie-pagina .pie-texto{font-size:7.5pt;color:#444;line-height:1.4}
   .print-memo .ficha-datos{font-size:10.5pt}
   .print-memo .ficha-foto{width:3cm;height:4cm}
-  .print-memo .ficha-logo-top img{width:40pt;height:40pt}
+  .print-memo .encabezado-ficha{display:flex;align-items:center;justify-content:center;gap:10pt;text-align:left;margin-bottom:12pt}
+  .print-memo .encabezado-ficha img{width:32pt;height:32pt;object-fit:contain;flex-shrink:0}
+  .print-memo .encabezado-ficha .colegio{font-size:9.5pt}
+  .print-memo .ficha-h2{margin:8pt 0 14pt}
 }
 </style>
 </head>
@@ -890,8 +891,7 @@ function fichaAntecedentesInterior(f){
     ? filaDato("Curso 2027", E.cursoMatricula || E.cursoAnterior || "—")
     : filaDato("Colegio de procedencia", E.procedencia);
   return `
-    <div class="ficha-logo-top"><img src="${LOGO_SRC}" alt="Logo"></div>
-    <h2>Ficha de Antecedentes del Estudiante</h2>
+    <h2 class="ficha-h2">Ficha de Antecedentes del Estudiante</h2>
     <div class="ficha-top">
       <div class="ficha-datos">
         ${filaDato("Fecha de matrícula", f.fechaRegistro)}
@@ -950,9 +950,12 @@ function renderMemos(){
       </div>
     </div>`).join("") + `
     <div class="print-memo">
-      <div class="encabezado">
-        <div class="colegio">${NOMBRE_COLEGIO}</div>
-        <div class="sub">Proceso de Matrícula 2027 — Folio ${fichaActual.folio}</div>
+      <div class="encabezado encabezado-ficha">
+        <img src="${LOGO_SRC}" alt="Logo">
+        <div>
+          <div class="colegio">${NOMBRE_COLEGIO}</div>
+          <div class="sub">Proceso de Matrícula 2027 — Folio ${fichaActual.folio}</div>
+        </div>
       </div>
       ${fichaAntecedentesInterior(fichaActual)}
       <div class="pie-pagina">
