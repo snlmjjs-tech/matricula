@@ -629,15 +629,18 @@ function rellenarSiVacio(id, valor){
   if (el && !el.value.trim()) el.value = valor;
 }
 document.getElementById("e_rut").addEventListener("blur", async ()=>{
-  if (tipoEstudiante !== "antiguo" || !db) return;
+  if (tipoEstudiante !== "antiguo"){ console.log("[2026] omitido: tipo no es antiguo"); return; }
+  if (!db){ console.log("[2026] omitido: Firebase no está inicializado (db=null)"); return; }
   const rutInput = document.getElementById("e_rut");
   const rut = rutInput.value.trim();
-  if (!rutValido(rut)) return;
+  if (!rutValido(rut)){ console.log("[2026] omitido: RUT inválido", rut); return; }
   const key = limpiarRut(rut);
-  if (key === rutAutocompletado2026) return;
+  if (key === rutAutocompletado2026){ console.log("[2026] omitido: mismo RUT ya consultado", key); return; }
   rutAutocompletado2026 = key;
+  console.log("[2026] consultando matriculas2026/"+key);
   try{
     const snap = await db.ref("matriculas2026/"+key).get();
+    console.log("[2026] respuesta recibida. existe:", snap.exists());
     if (!snap.exists()) return;
     const d = snap.val() || {};
     rellenarSiVacio("e_dir", [d.direccion, d.comuna].filter(Boolean).join(", "));
@@ -656,7 +659,10 @@ document.getElementById("e_rut").addEventListener("blur", async ()=>{
     }
     aviso("Datos de matrícula 2026 encontrados",
       "Se completaron automáticamente la dirección y los datos del apoderado a partir de la matrícula 2026. Revísalos junto al apoderado antes de continuar.");
-  }catch(err){ console.error("Autocompletar 2026:", err); }
+  }catch(err){
+    console.error("Autocompletar 2026:", err);
+    aviso("No se pudo consultar la matrícula 2026", "Detalle técnico: " + err.message);
+  }
 });
 
 /* ---------- Validación ---------- */
