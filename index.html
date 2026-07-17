@@ -97,6 +97,12 @@ input.bad{border-color:var(--error);background:#fdf3f2}
 .memo-card .firma{margin-top:44px;text-align:center}
 .memo-card .firma .linea-firma{display:inline-block;border-top:1.5px solid var(--tinta);padding-top:6px;min-width:280px;font-size:.85rem}
 .memo-actions{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0 40px;justify-content:center}
+.ficha-top{display:flex;gap:20px;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.ficha-foto{width:3cm;height:4cm;flex-shrink:0;border:1.5px dashed var(--linea);display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--gris);text-align:center;padding:6px}
+.ficha-datos{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;flex:1}
+.ficha-datos .dato .label{display:block;font-size:.68rem;color:var(--gris);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.ficha-datos .dato .valor{display:block}
+.ficha-subtitulo{margin:16px 0 6px;font-size:.85rem;color:var(--azul);font-weight:800;text-transform:uppercase;letter-spacing:.5px}
 
 /* ---------- Modal ---------- */
 .overlay{display:none;position:fixed;inset:0;background:rgba(13,26,42,.55);z-index:50;align-items:center;justify-content:center;padding:16px}
@@ -155,6 +161,8 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
   .print-memo{position:relative;min-height:24.5cm}
   .pie-pagina img{width:26pt;height:26pt;object-fit:contain}
   .pie-pagina .pie-texto{font-size:7.5pt;color:#444;line-height:1.4}
+  .print-memo .ficha-datos{font-size:10.5pt}
+  .print-memo .ficha-foto{width:3cm;height:4cm}
 }
 </style>
 </head>
@@ -869,6 +877,49 @@ function textosMemos(f){
     firma:`${A.nombre} — RUT ${A.rut}<br>Firma del apoderado(a) titular`}));
 }
 
+function filaDato(label, valor){
+  return `<div class="dato"><span class="label">${label}</span><span class="valor">${valor || "—"}</span></div>`;
+}
+
+function fichaAntecedentesInterior(f){
+  const E = f.estudiante, A = f.apoderado, S = f.suplente;
+  const cursoOProcedencia = f.tipo==="antiguo"
+    ? filaDato("Curso 2027", E.cursoMatricula || E.cursoAnterior || "—")
+    : filaDato("Colegio de procedencia", E.procedencia);
+  return `
+    <h2>Ficha de Antecedentes del Estudiante</h2>
+    <div class="ficha-top">
+      <div class="ficha-datos">
+        ${filaDato("Nombre del estudiante", E.nombre)}
+        ${filaDato("RUT", E.rut)}
+        ${filaDato("Fecha de nacimiento", E.fnac)}
+        ${filaDato("Tipo de estudiante", f.tipo==="nuevo" ? "Nuevo" : "Antiguo")}
+        ${filaDato("Dirección", E.direccion)}
+        ${filaDato("Celular", E.celular)}
+        ${filaDato("Correo", E.correo)}
+        ${cursoOProcedencia}
+      </div>
+      <div class="ficha-foto">Foto carnet</div>
+    </div>
+    <h3 class="ficha-subtitulo">Apoderado titular</h3>
+    <div class="ficha-datos">
+      ${filaDato("Nombre", A.nombre)}
+      ${filaDato("RUT", A.rut)}
+      ${filaDato("Dirección", A.direccion)}
+      ${filaDato("Celular", A.celular)}
+      ${filaDato("Correo", A.correo)}
+    </div>
+    ${S ? `
+    <h3 class="ficha-subtitulo">Apoderado suplente</h3>
+    <div class="ficha-datos">
+      ${filaDato("Nombre", S.nombre)}
+      ${filaDato("RUT", S.rut)}
+      ${filaDato("Dirección", S.direccion)}
+      ${filaDato("Celular", S.celular)}
+      ${filaDato("Correo", S.correo)}
+    </div>` : ""}`;
+}
+
 function renderMemos(){
   const memos = textosMemos(fichaActual);
   document.getElementById("memosPantalla").innerHTML = memos.map(m=>`
@@ -877,7 +928,7 @@ function renderMemos(){
       <div>${m.cuerpo}</div>
       <p style="margin-top:16px">${m.fecha}</p>
       <div class="firma"><span class="linea-firma">${m.firma}</span></div>
-    </div>`).join("");
+    </div>`).join("") + `<div class="memo-card">${fichaAntecedentesInterior(fichaActual)}</div>`;
   document.getElementById("printArea").innerHTML = memos.map(m=>`
     <div class="print-memo">
       <div class="encabezado">
@@ -892,7 +943,18 @@ function renderMemos(){
         <img src="${LOGO_SRC}" alt="Logo">
         <div class="pie-texto">${NOMBRE_COLEGIO}<br>Proceso de Matrícula 2027 — Folio ${fichaActual.folio}</div>
       </div>
-    </div>`).join("");
+    </div>`).join("") + `
+    <div class="print-memo">
+      <div class="encabezado">
+        <div class="colegio">${NOMBRE_COLEGIO}</div>
+        <div class="sub">Proceso de Matrícula 2027 — Folio ${fichaActual.folio}</div>
+      </div>
+      ${fichaAntecedentesInterior(fichaActual)}
+      <div class="pie-pagina">
+        <img src="${LOGO_SRC}" alt="Logo">
+        <div class="pie-texto">${NOMBRE_COLEGIO}<br>Proceso de Matrícula 2027 — Folio ${fichaActual.folio}</div>
+      </div>
+    </div>`;
 }
 
 function imprimirMemos(){
