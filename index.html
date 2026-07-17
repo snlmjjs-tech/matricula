@@ -128,9 +128,12 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
 .btn-del{background:none;border:1.5px solid var(--linea);border-radius:8px;padding:5px 9px;cursor:pointer;font-size:.95rem;line-height:1}
 .btn-del:hover{border-color:var(--error);background:#fdf3f2}
 .contador{font-size:.82rem;color:var(--gris)}
-.admin-filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.admin-filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
 .admin-filtros input[type=text]{flex:2;min-width:220px}
 .admin-filtros select{flex:1;min-width:160px}
+.filtro-fecha{display:flex;flex-direction:column;gap:4px}
+.filtro-fecha label{font-size:.72rem;font-weight:700;color:var(--gris)}
+.filtro-fecha input[type=date]{min-width:150px}
 
 /* ---------- Impresión ---------- */
 #printArea{display:none}
@@ -424,6 +427,14 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
       <select id="fCurso" onchange="aplicarFiltrosAdmin()">
         <option value="">Todos los cursos</option>
       </select>
+      <div class="filtro-fecha">
+        <label for="fDesde">Desde</label>
+        <input type="date" id="fDesde" onchange="aplicarFiltrosAdmin()">
+      </div>
+      <div class="filtro-fecha">
+        <label for="fHasta">Hasta</label>
+        <input type="date" id="fHasta" onchange="aplicarFiltrosAdmin()">
+      </div>
       <button type="button" class="btn btn-ghost" onclick="limpiarFiltrosAdmin()">Limpiar filtros</button>
     </div>
     <p class="contador" id="contador"></p><br>
@@ -1014,16 +1025,35 @@ function limpiarFiltrosAdmin(){
   document.getElementById("fBusqueda").value = "";
   document.getElementById("fTipo").value = "";
   document.getElementById("fCurso").value = "";
+  document.getElementById("fDesde").value = "";
+  document.getElementById("fHasta").value = "";
   aplicarFiltrosAdmin();
+}
+
+// La fecha se guarda con toLocaleString("es-CL"), ej: "16-07-2026, 9:56:05 p. m." — solo se usa la parte antes de la coma.
+function parseFechaRegistro(str){
+  const partes = (str || "").split(",")[0].trim().split("-");
+  if (partes.length !== 3) return null;
+  const [d, m, y] = partes.map(Number);
+  if (!d || !m || !y) return null;
+  return new Date(y, m-1, d);
 }
 
 function aplicarFiltrosAdmin(){
   const q = document.getElementById("fBusqueda").value.trim().toLowerCase();
   const tipo = document.getElementById("fTipo").value;
   const curso = document.getElementById("fCurso").value;
+  const desde = document.getElementById("fDesde").value;
+  const hasta = document.getElementById("fHasta").value;
   const filtrados = registros.filter(r=>{
     if (tipo && r.tipo !== tipo) return false;
     if (curso && (r.estudiante.cursoMatricula || r.estudiante.cursoAnterior || "") !== curso) return false;
+    if (desde || hasta){
+      const fecha = parseFechaRegistro(r.fechaRegistro);
+      if (!fecha) return false;
+      if (desde && fecha < new Date(desde+"T00:00:00")) return false;
+      if (hasta && fecha > new Date(hasta+"T23:59:59")) return false;
+    }
     if (q){
       const texto = [r.folio, r.estudiante.nombre, r.estudiante.rut, r.apoderado.nombre, r.apoderado.rut].join(" ").toLowerCase();
       if (!texto.includes(q)) return false;
