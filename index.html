@@ -9,7 +9,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -540,12 +539,11 @@ const firebaseConfig = {
   appId: "1:788236687215:web:18336c9efffb417164fa9a"
 };
 
-// 2) EmailJS (envío automático del comprobante al apoderado)
-//    Crea cuenta gratis en emailjs.com → Add Service (Gmail) → crea un template
-//    El template debe usar las variables: {{to_email}}, {{estudiante}}, {{folio}}, {{detalle}}
-const EMAILJS_PUBLIC_KEY = "-yh2s1ujdxQKIw1bD";
-const EMAILJS_SERVICE_ID = "service_9i7lz4j";
-const EMAILJS_TEMPLATE_ID = "template_d0jiafh";
+// 2) Envío automático del comprobante al apoderado (Google Apps Script + Gmail, gratis)
+//    Crea un proyecto en script.google.com, pega el código del script, despliega como
+//    "Web app" (acceso: Anyone) y pega aquí la URL que termina en /exec y la clave secreta.
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxneqJ_wmnzntnJiUsYnHz-AwfyfiH67LAztJcp7TSmFlebGRHT7exr8eHsA7X6K9U/exec";
+const APPS_SCRIPT_SECRETO = "ZZWBOa92quuP2qK3la7vVYhc";
 /* ========================================================== */
 
 let db = null;
@@ -556,8 +554,7 @@ try {
   }
 } catch(e){ console.error("Firebase:", e); }
 
-const emailjsListo = !EMAILJS_PUBLIC_KEY.includes("PEGA_AQUI");
-if (emailjsListo && window.emailjs) emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+const correoListo = !APPS_SCRIPT_URL.includes("PEGA_AQUI");
 
 let tipoEstudiante = "nuevo";
 let fichaActual = null;
@@ -965,7 +962,7 @@ async function finalizarMatricula(){
     let msgMail = "El apoderado no registró correo, por lo que no se envió comprobante por email.";
     const correo = fichaActual.apoderado.correo;
     if (correo){
-      if (emailjsListo){
+      if (correoListo){
         const E=fichaActual.estudiante;
         const detalle =
 `Estimado(a) ${fichaActual.apoderado.nombre}:
@@ -982,25 +979,34 @@ Documentos firmados por el apoderado:
 • Aceptación del Reglamento Interno
 • Autorización de salidas pedagógicas
 
+Se adjunta además el comprobante de matrícula en PDF.
+
 Atentamente,
 ${NOMBRE_COLEGIO}`;
         let comprobantePdf = null;
         try{ comprobantePdf = generarComprobantePDFBase64(fichaActual); }
         catch(err){ console.error("Comprobante PDF:", err); }
         try{
-          await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-            to_email: correo, estudiante: fichaActual.estudiante.nombre,
-            folio: fichaActual.folio, detalle: detalle,
-            comprobante_pdf: comprobantePdf,
-            comprobante_nombre: `Comprobante_matricula_folio_${fichaActual.folio}.pdf`
+          const resp = await fetch(APPS_SCRIPT_URL, {
+            method: "POST",
+            body: JSON.stringify({
+              secreto: APPS_SCRIPT_SECRETO,
+              to: correo,
+              subject: `Confirmación de matrícula 2027 - Folio ${fichaActual.folio}`,
+              body: detalle,
+              pdfBase64: comprobantePdf,
+              pdfName: `Comprobante_matricula_folio_${fichaActual.folio}.pdf`
+            })
           });
-          msgMail = "Se envió el comprobante de matrícula al correo " + correo + ".";
+          const data = await resp.json();
+          if (!data.ok) throw new Error(data.error || "El script de Google respondió con un error desconocido.");
+          msgMail = "Se envió el comprobante de matrícula (con PDF adjunto) al correo " + correo + ".";
         }catch(err){
           console.error(err);
-          msgMail = "Los datos se guardaron, pero el correo no pudo enviarse (revisa la configuración de EmailJS).";
+          msgMail = "Los datos se guardaron, pero el correo no pudo enviarse (revisa la configuración del script de Google).";
         }
       } else {
-        msgMail = "Los datos se guardaron. Para el envío automático de correos, configura EmailJS al inicio del archivo.";
+        msgMail = "Los datos se guardaron. Para el envío automático de correos, configura el script de Google al inicio del archivo.";
       }
     }
 
