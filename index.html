@@ -11,6 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
   --azul:#14355e; --azul-osc:#0d2440; --azul-claro:#e8eef7;
@@ -903,6 +904,49 @@ function imprimirMemos(){
   setTimeout(()=>abrir("ovFirma"), 400);
 }
 
+/* ---------- Comprobante de matrícula en PDF (para adjuntar al correo) ---------- */
+function generarComprobantePDFBase64(f){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "mm", format: "letter" });
+  const E = f.estudiante, A = f.apoderado;
+  const ancho = doc.internal.pageSize.getWidth();
+
+  doc.addImage(LOGO_SRC, "PNG", (ancho-28)/2, 16, 28, 25.7);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text(NOMBRE_COLEGIO, ancho/2, 52, { align: "center", maxWidth: ancho-40 });
+
+  doc.setFontSize(16);
+  doc.text("COMPROBANTE DE MATRÍCULA", ancho/2, 64, { align: "center" });
+
+  const cursoTxt = f.tipo === "antiguo"
+    ? `en el curso ${E.cursoMatricula || E.cursoAnterior || "—"}`
+    : `proveniente del establecimiento ${E.procedencia || "—"}`;
+  const cuerpo =
+`Se certifica que con fecha ${f.fechaRegistro}, el/la estudiante ${E.nombre}, RUT ${E.rut}, `+
+`fue matriculado(a) en el Instituto Comercial Alberto Valenzuela Llanos de San Fernando, `+
+`para el año escolar 2027, ${cursoTxt}, quedando bajo la responsabilidad de su apoderado(a) `+
+`titular ${A.nombre}, RUT ${A.rut}.`;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  const lineas = doc.splitTextToSize(cuerpo, ancho-40);
+  doc.text(lineas, 20, 80);
+
+  const yFolio = 80 + lineas.length*6 + 14;
+  doc.setFontSize(10);
+  doc.text(`Folio de matrícula: ${f.folio}`, 20, yFolio);
+  const hoy = new Date().toLocaleDateString("es-CL", { day:"numeric", month:"long", year:"numeric" });
+  doc.text(`San Fernando, ${hoy}.`, 20, yFolio+8);
+
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text("Este comprobante certifica el registro de la matrícula en el sistema del establecimiento.", ancho/2, 275, { align:"center", maxWidth: ancho-30 });
+
+  return doc.output("datauristring").split(",")[1];
+}
+
 /* ---------- Finalizar: guardar + correo ---------- */
 async function finalizarMatricula(){
   const btn = document.getElementById("btnFinalizar");
@@ -940,10 +984,15 @@ Documentos firmados por el apoderado:
 
 Atentamente,
 ${NOMBRE_COLEGIO}`;
+        let comprobantePdf = null;
+        try{ comprobantePdf = generarComprobantePDFBase64(fichaActual); }
+        catch(err){ console.error("Comprobante PDF:", err); }
         try{
           await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
             to_email: correo, estudiante: fichaActual.estudiante.nombre,
-            folio: fichaActual.folio, detalle: detalle
+            folio: fichaActual.folio, detalle: detalle,
+            comprobante_pdf: comprobantePdf,
+            comprobante_nombre: `Comprobante_matricula_folio_${fichaActual.folio}.pdf`
           });
           msgMail = "Se envió el comprobante de matrícula al correo " + correo + ".";
         }catch(err){
