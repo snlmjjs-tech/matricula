@@ -103,6 +103,8 @@ input.bad{border-color:var(--error);background:#fdf3f2}
 .ficha-datos .dato .label{display:block;font-size:.68rem;color:var(--gris);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
 .ficha-datos .dato .valor{display:block}
 .ficha-subtitulo{margin:16px 0 6px;font-size:.85rem;color:var(--azul);font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+.ficha-logo-top{text-align:center;margin-bottom:10px}
+.ficha-logo-top img{width:56px;height:56px;object-fit:contain}
 
 /* ---------- Modal ---------- */
 .overlay{display:none;position:fixed;inset:0;background:rgba(13,26,42,.55);z-index:50;align-items:center;justify-content:center;padding:16px}
@@ -163,6 +165,7 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
   .pie-pagina .pie-texto{font-size:7.5pt;color:#444;line-height:1.4}
   .print-memo .ficha-datos{font-size:10.5pt}
   .print-memo .ficha-foto{width:3cm;height:4cm}
+  .print-memo .ficha-logo-top img{width:40pt;height:40pt}
 }
 </style>
 </head>
@@ -887,9 +890,11 @@ function fichaAntecedentesInterior(f){
     ? filaDato("Curso 2027", E.cursoMatricula || E.cursoAnterior || "—")
     : filaDato("Colegio de procedencia", E.procedencia);
   return `
+    <div class="ficha-logo-top"><img src="${LOGO_SRC}" alt="Logo"></div>
     <h2>Ficha de Antecedentes del Estudiante</h2>
     <div class="ficha-top">
       <div class="ficha-datos">
+        ${filaDato("Fecha de matrícula", f.fechaRegistro)}
         ${filaDato("Nombre del estudiante", E.nombre)}
         ${filaDato("RUT", E.rut)}
         ${filaDato("Fecha de nacimiento", E.fnac)}
