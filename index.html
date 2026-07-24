@@ -160,21 +160,22 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
   .print-memo .fecha{margin-top:24pt}
   .print-memo .firma{margin-top:70pt;text-align:center}
   .print-memo .firma .linea-firma{display:inline-block;border-top:1.2pt solid #000;padding-top:6pt;min-width:280pt;font-size:10pt}
-  .print-memo .firma-doble{display:flex;justify-content:space-around;gap:16pt;margin-top:14pt}
+  .print-memo .firma-doble{display:flex;justify-content:space-around;gap:16pt;margin-top:2pt}
   .print-memo .firma-doble .firma{margin-top:0}
   .print-memo .firma-doble .linea-firma{min-width:180pt;font-size:9pt}
   .print-memo .pie-pagina{position:absolute;bottom:1cm;left:2cm;right:2cm;display:flex;align-items:center;gap:8pt;border-top:0.8pt solid #999;padding-top:8pt;font-family:'Archivo',Arial,sans-serif}
   .print-memo{position:relative;min-height:24.5cm}
   .pie-pagina img{width:26pt;height:26pt;object-fit:contain}
   .pie-pagina .pie-texto{font-size:7.5pt;color:#444;line-height:1.4}
-  .print-memo .ficha-datos{font-size:10pt;gap:4pt 16pt}
-  .print-memo .ficha-foto{width:2.6cm;height:3.4cm}
-  .print-memo .ficha-top{margin-bottom:4pt}
-  .print-memo .ficha-subtitulo{margin:8pt 0 3pt}
-  .print-memo .encabezado-ficha{display:flex;align-items:center;justify-content:center;gap:10pt;text-align:left;margin-bottom:8pt}
-  .print-memo .encabezado-ficha img{width:28pt;height:28pt;object-fit:contain;flex-shrink:0}
-  .print-memo .encabezado-ficha .colegio{font-size:9.5pt}
-  .print-memo .ficha-h2{margin:6pt 0 10pt}
+  .print-memo .ficha-datos{font-size:9pt;gap:2pt 14pt}
+  .print-memo .ficha-foto{width:2.2cm;height:2.8cm}
+  .print-memo .ficha-top{margin-bottom:2pt}
+  .print-memo .ficha-subtitulo{margin:4pt 0 1pt;font-size:.8rem}
+  .print-memo .encabezado-ficha{display:flex;align-items:center;justify-content:center;gap:10pt;text-align:left;margin-bottom:3pt}
+  .print-memo .encabezado-ficha img{width:24pt;height:24pt;object-fit:contain;flex-shrink:0}
+  .print-memo .encabezado-ficha .colegio{font-size:8.5pt}
+  .print-memo .ficha-h2{margin:2pt 0 5pt;font-size:12pt}
+  .print-memo.ficha-print{min-height:0}
 }
 </style>
 </head>
@@ -248,12 +249,27 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
             <input type="text" id="e_dir">
           </div>
           <div class="field">
+            <label>Comuna <span class="req">*</span></label>
+            <input type="text" id="e_comuna">
+          </div>
+          <div class="field">
+            <label>Nacionalidad <span class="req">*</span></label>
+            <input type="text" id="e_nacionalidad">
+          </div>
+          <div class="field">
             <label>Número de celular <span class="req">*</span></label>
             <input type="tel" id="e_cel" placeholder="+56 9 1234 5678">
           </div>
           <div class="field">
             <label>Correo electrónico <span class="opt">(opcional)</span></label>
             <input type="email" id="e_mail">
+          </div>
+          <div class="field" style="grid-column:1/-1">
+            <label>Foto del estudiante <span class="opt">(opcional)</span></label>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <img id="miniaturaFoto" style="display:none;width:64px;height:64px;object-fit:cover;border-radius:8px;border:1.5px solid var(--linea)" alt="Foto del estudiante">
+              <button type="button" class="btn btn-ghost" id="btnTomarFoto" onclick="abrirFoto()">📷 Tomar foto del estudiante</button>
+            </div>
           </div>
 
           <!-- Solo estudiante NUEVO -->
@@ -343,12 +359,20 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
             <input type="text" id="a_rut" placeholder="12.345.678-9">
           </div>
           <div class="field">
-            <label>Fecha de nacimiento <span class="req">*</span></label>
-            <input type="date" id="a_fnac">
+            <label>Edad <span class="req">*</span></label>
+            <input type="number" id="a_edad" min="18" max="120" placeholder="Ej: 40">
           </div>
           <div class="field" style="grid-column:1/-1">
             <label>Dirección <span class="req">*</span></label>
             <input type="text" id="a_dir">
+          </div>
+          <div class="field">
+            <label>Comuna <span class="req">*</span></label>
+            <input type="text" id="a_comuna">
+          </div>
+          <div class="field">
+            <label>Nacionalidad <span class="req">*</span></label>
+            <input type="text" id="a_nacionalidad">
           </div>
           <div class="field">
             <label>Número de celular <span class="req">*</span></label>
@@ -377,8 +401,10 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
               <input type="text" id="s_nombre">
             </div>
             <div class="field"><label>RUT <span class="req">*</span></label><input type="text" id="s_rut" placeholder="12.345.678-9"></div>
-            <div class="field"><label>Fecha de nacimiento <span class="req">*</span></label><input type="date" id="s_fnac"></div>
+            <div class="field"><label>Edad <span class="req">*</span></label><input type="number" id="s_edad" min="18" max="120" placeholder="Ej: 40"></div>
             <div class="field" style="grid-column:1/-1"><label>Dirección <span class="req">*</span></label><input type="text" id="s_dir"></div>
+            <div class="field"><label>Comuna <span class="req">*</span></label><input type="text" id="s_comuna"></div>
+            <div class="field"><label>Nacionalidad <span class="req">*</span></label><input type="text" id="s_nacionalidad"></div>
             <div class="field"><label>Número de celular <span class="req">*</span></label><input type="tel" id="s_cel"></div>
             <div class="field"><label>Correo electrónico <span class="opt">(opcional)</span></label><input type="email" id="s_mail"></div>
           </div>
@@ -537,6 +563,22 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
   </div>
 </div>
 
+<div class="overlay" id="ovFoto">
+  <div class="modal" style="text-align:center">
+    <h3>Foto del estudiante</h3>
+    <video id="videoFoto" autoplay playsinline muted style="width:100%;max-width:320px;border-radius:10px;background:#000"></video>
+    <canvas id="canvasFoto" style="display:none"></canvas>
+    <img id="previewFoto" alt="Vista previa" style="display:none;width:100%;max-width:320px;border-radius:10px">
+    <p class="hint err" id="fotoError"></p>
+    <div class="modal-btns" style="justify-content:center">
+      <button type="button" class="btn btn-ghost" onclick="cerrarFoto()">Cancelar</button>
+      <button type="button" class="btn btn-pri" id="btnCapturar" onclick="capturarFoto()">📸 Capturar</button>
+      <button type="button" class="btn btn-ghost" id="btnRetomar" style="display:none" onclick="abrirFoto()">🔄 Volver a tomar</button>
+      <button type="button" class="btn btn-pri" id="btnUsarFoto" style="display:none" onclick="usarFoto()">✅ Usar esta foto</button>
+    </div>
+  </div>
+</div>
+
 <!-- Área de impresión -->
 <div id="printArea"></div>
 
@@ -581,6 +623,8 @@ let tipoEstudiante = "nuevo";
 let fichaActual = null;
 let yaImprimio = false;
 let codigoPreCargado = null;
+let fotoEstudianteBase64 = null;
+let streamFoto = null;
 
 // Modo apoderado: se activa al abrir el link con ?apoderado (desde el QR)
 const MODO_APODERADO = new URLSearchParams(location.search).has("apoderado");
@@ -608,7 +652,9 @@ function iniciarFicha(tipo){
   codigoPreCargado = null;
   editandoKey = null;
   editandoOriginal = null;
+  fotoEstudianteBase64 = null;
   document.getElementById("ficha").reset();
+  actualizarMiniaturaFoto();
   document.querySelectorAll(".subfields").forEach(s=>s.classList.remove("show"));
   document.querySelectorAll("input.bad,select.bad").forEach(i=>i.classList.remove("bad"));
   document.getElementById("bannerErr").classList.remove("show");
@@ -621,6 +667,67 @@ function iniciarFicha(tipo){
 }
 function volverInicio(){ mostrar("scr-home"); }
 function nuevaMatricula(){ mostrar("scr-home"); }
+
+/* ---------- Foto del estudiante (webcam) ---------- */
+function actualizarMiniaturaFoto(){
+  const mini = document.getElementById("miniaturaFoto");
+  const btn = document.getElementById("btnTomarFoto");
+  if (fotoEstudianteBase64){
+    mini.src = fotoEstudianteBase64;
+    mini.style.display = "";
+    btn.textContent = "📷 Volver a tomar foto";
+  } else {
+    mini.style.display = "none";
+    btn.textContent = "📷 Tomar foto del estudiante";
+  }
+}
+function detenerCamara(){
+  if (streamFoto){ streamFoto.getTracks().forEach(t=>t.stop()); streamFoto = null; }
+}
+async function abrirFoto(){
+  document.getElementById("fotoError").textContent = "";
+  document.getElementById("previewFoto").style.display = "none";
+  document.getElementById("videoFoto").style.display = "";
+  document.getElementById("btnCapturar").style.display = "";
+  document.getElementById("btnRetomar").style.display = "none";
+  document.getElementById("btnUsarFoto").style.display = "none";
+  abrir("ovFoto");
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    document.getElementById("fotoError").textContent = "Este navegador no permite acceder a la cámara.";
+    return;
+  }
+  try{
+    streamFoto = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+    document.getElementById("videoFoto").srcObject = streamFoto;
+  }catch(err){
+    document.getElementById("fotoError").textContent = "No se pudo acceder a la cámara: " + err.message;
+  }
+}
+function cerrarFoto(){
+  detenerCamara();
+  cerrar("ovFoto");
+}
+function capturarFoto(){
+  const video = document.getElementById("videoFoto");
+  if (!video.videoWidth){ return; }
+  const canvas = document.getElementById("canvasFoto");
+  canvas.width = 480;
+  canvas.height = Math.round(480 * (video.videoHeight / video.videoWidth));
+  canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+  window._fotoTempDataUrl = canvas.toDataURL("image/jpeg", 0.85);
+  document.getElementById("previewFoto").src = window._fotoTempDataUrl;
+  document.getElementById("previewFoto").style.display = "";
+  document.getElementById("videoFoto").style.display = "none";
+  document.getElementById("btnCapturar").style.display = "none";
+  document.getElementById("btnRetomar").style.display = "";
+  document.getElementById("btnUsarFoto").style.display = "";
+  detenerCamara();
+}
+function usarFoto(){
+  fotoEstudianteBase64 = window._fotoTempDataUrl || null;
+  actualizarMiniaturaFoto();
+  cerrar("ovFoto");
+}
 
 function toggleSub(grupo){
   const val = document.querySelector(`input[name="${grupo}"]:checked`)?.value;
@@ -661,6 +768,8 @@ function validarFicha(){
   ok = marcar(document.getElementById("e_rut"), !rutValido(v("e_rut"))) && ok;
   ok = marcar(document.getElementById("e_fnac"), !v("e_fnac")) && ok;
   ok = marcar(document.getElementById("e_dir"), !v("e_dir")) && ok;
+  ok = marcar(document.getElementById("e_comuna"), !v("e_comuna")) && ok;
+  ok = marcar(document.getElementById("e_nacionalidad"), !v("e_nacionalidad")) && ok;
   ok = marcar(document.getElementById("e_cel"), !v("e_cel")) && ok;
 
   if (tipoEstudiante==="nuevo"){
@@ -690,16 +799,20 @@ function validarFicha(){
   // Apoderado titular
   ok = marcar(document.getElementById("a_nombre"), !v("a_nombre")) && ok;
   ok = marcar(document.getElementById("a_rut"), !rutValido(v("a_rut"))) && ok;
-  ok = marcar(document.getElementById("a_fnac"), !v("a_fnac")) && ok;
+  ok = marcar(document.getElementById("a_edad"), !v("a_edad")) && ok;
   ok = marcar(document.getElementById("a_dir"), !v("a_dir")) && ok;
+  ok = marcar(document.getElementById("a_comuna"), !v("a_comuna")) && ok;
+  ok = marcar(document.getElementById("a_nacionalidad"), !v("a_nacionalidad")) && ok;
   ok = marcar(document.getElementById("a_cel"), !v("a_cel")) && ok;
 
   // Suplente (si se registra)
   if (document.querySelector('input[name="sup"]:checked')?.value==="si"){
     ok = marcar(document.getElementById("s_nombre"), !v("s_nombre")) && ok;
     ok = marcar(document.getElementById("s_rut"), !rutValido(v("s_rut"))) && ok;
-    ok = marcar(document.getElementById("s_fnac"), !v("s_fnac")) && ok;
+    ok = marcar(document.getElementById("s_edad"), !v("s_edad")) && ok;
     ok = marcar(document.getElementById("s_dir"), !v("s_dir")) && ok;
+    ok = marcar(document.getElementById("s_comuna"), !v("s_comuna")) && ok;
+    ok = marcar(document.getElementById("s_nacionalidad"), !v("s_nacionalidad")) && ok;
     ok = marcar(document.getElementById("s_cel"), !v("s_cel")) && ok;
   }
   return ok;
@@ -714,16 +827,18 @@ function recolectarDatos(){
     tipo: tipoEstudiante,
     estudiante: {
       nombre: v("e_nombre"), rut: v("e_rut"), fnac: v("e_fnac"), direccion: v("e_dir"),
+      comuna: v("e_comuna"), nacionalidad: v("e_nacionalidad"),
       celular: v("e_cel"), correo: v("e_mail"),
       procedencia: tipoEstudiante==="nuevo" ? v("e_procedencia") : "",
       cursoMatricula: tipoEstudiante==="antiguo" ? (v("e_cursoAnt")+" "+v("e_letraAnt").toUpperCase()) : "",
       repitencia: radio("rep"), repCurso: v("e_repCurso"), repAnio: v("e_repAnio"),
       pie: radio("pie"), pieDiagnostico: v("e_pieDiag"), pieDocumentacion: radio("pieDoc"),
       salud: radio("salud"), saludDetalle: v("e_saludDet"),
-      observaciones: v("e_obs")
+      observaciones: v("e_obs"),
+      foto: fotoEstudianteBase64 || ""
     },
-    apoderado: { nombre: v("a_nombre"), rut: v("a_rut"), fnac: v("a_fnac"), direccion: v("a_dir"), celular: v("a_cel"), correo: v("a_mail") },
-    suplente: conSup ? { nombre: v("s_nombre"), rut: v("s_rut"), fnac: v("s_fnac"), direccion: v("s_dir"), celular: v("s_cel"), correo: v("s_mail") } : null
+    apoderado: { nombre: v("a_nombre"), rut: v("a_rut"), edad: v("a_edad"), direccion: v("a_dir"), comuna: v("a_comuna"), nacionalidad: v("a_nacionalidad"), celular: v("a_cel"), correo: v("a_mail") },
+    suplente: conSup ? { nombre: v("s_nombre"), rut: v("s_rut"), edad: v("s_edad"), direccion: v("s_dir"), comuna: v("s_comuna"), nacionalidad: v("s_nacionalidad"), celular: v("s_cel"), correo: v("s_mail") } : null
   };
 }
 
@@ -846,7 +961,10 @@ function llenarFicha(d, mensaje){
   const set = (id,val)=>{ document.getElementById(id).value = val || ""; };
   const E=d.estudiante, A=d.apoderado, S=d.suplente;
   set("e_nombre",E.nombre); set("e_rut",E.rut); set("e_fnac",E.fnac); set("e_dir",E.direccion);
+  set("e_comuna",E.comuna); set("e_nacionalidad",E.nacionalidad);
   set("e_cel",E.celular); set("e_mail",E.correo); set("e_obs",E.observaciones);
+  fotoEstudianteBase64 = E.foto || null;
+  actualizarMiniaturaFoto();
   if (d.tipo==="nuevo"){ set("e_procedencia",E.procedencia); }
   else {
     const curso = (E.cursoMatricula || E.cursoAnterior || "").trim();
@@ -857,12 +975,14 @@ function llenarFicha(d, mensaje){
   setRadio("rep",E.repitencia); toggleSub("rep"); set("e_repCurso",E.repCurso); set("e_repAnio",E.repAnio);
   setRadio("pie",E.pie); toggleSub("pie"); set("e_pieDiag",E.pieDiagnostico); setRadio("pieDoc",E.pieDocumentacion);
   setRadio("salud",E.salud); toggleSub("salud"); set("e_saludDet",E.saludDetalle);
-  set("a_nombre",A.nombre); set("a_rut",A.rut); set("a_fnac",A.fnac); set("a_dir",A.direccion);
+  set("a_nombre",A.nombre); set("a_rut",A.rut); set("a_edad",A.edad); set("a_dir",A.direccion);
+  set("a_comuna",A.comuna); set("a_nacionalidad",A.nacionalidad);
   set("a_cel",A.celular); set("a_mail",A.correo);
   setRadio("sup", S ? "si" : "no"); toggleSub("sup");
   if (S){
-    set("s_nombre",S.nombre); set("s_rut",S.rut); set("s_fnac",S.fnac);
-    set("s_dir",S.direccion); set("s_cel",S.celular); set("s_mail",S.correo);
+    set("s_nombre",S.nombre); set("s_rut",S.rut); set("s_edad",S.edad);
+    set("s_dir",S.direccion); set("s_comuna",S.comuna); set("s_nacionalidad",S.nacionalidad);
+    set("s_cel",S.celular); set("s_mail",S.correo);
   }
   aviso("Datos cargados", mensaje || "Se cargaron los datos de la pre-matrícula. Revísalos junto al apoderado antes de generar los documentos.");
 }
@@ -945,6 +1065,9 @@ function fichaAntecedentesInterior(f){
   const cursoOProcedencia = f.tipo==="antiguo"
     ? filaDato("Curso 2027", E.cursoMatricula || E.cursoAnterior || "—")
     : filaDato("Colegio de procedencia", E.procedencia);
+  const fotoHtml = E.foto
+    ? `<img src="${E.foto}" alt="Foto del estudiante" style="width:100%;height:100%;object-fit:cover;border-radius:6px">`
+    : "Foto carnet";
   return `
     <h2 class="ficha-h2">Ficha de Antecedentes del Estudiante</h2>
     <div class="ficha-top">
@@ -956,17 +1079,22 @@ function fichaAntecedentesInterior(f){
         ${filaDato("Edad", calcularEdad(E.fnac))}
         ${filaDato("Tipo de estudiante", f.tipo==="nuevo" ? "Nuevo" : "Antiguo")}
         ${filaDato("Dirección", E.direccion)}
+        ${filaDato("Comuna", E.comuna)}
+        ${filaDato("Nacionalidad", E.nacionalidad)}
         ${filaDato("Celular", E.celular)}
         ${filaDato("Correo", E.correo)}
         ${cursoOProcedencia}
       </div>
-      <div class="ficha-foto">Foto carnet</div>
+      <div class="ficha-foto">${fotoHtml}</div>
     </div>
     <h3 class="ficha-subtitulo">Apoderado titular</h3>
     <div class="ficha-datos">
       ${filaDato("Nombre", A.nombre)}
       ${filaDato("RUT", A.rut)}
+      ${filaDato("Edad", A.edad ? A.edad+" años" : "")}
       ${filaDato("Dirección", A.direccion)}
+      ${filaDato("Comuna", A.comuna)}
+      ${filaDato("Nacionalidad", A.nacionalidad)}
       ${filaDato("Celular", A.celular)}
       ${filaDato("Correo", A.correo)}
     </div>
@@ -975,7 +1103,10 @@ function fichaAntecedentesInterior(f){
     <div class="ficha-datos">
       ${filaDato("Nombre", S.nombre)}
       ${filaDato("RUT", S.rut)}
+      ${filaDato("Edad", S.edad ? S.edad+" años" : "")}
       ${filaDato("Dirección", S.direccion)}
+      ${filaDato("Comuna", S.comuna)}
+      ${filaDato("Nacionalidad", S.nacionalidad)}
       ${filaDato("Celular", S.celular)}
       ${filaDato("Correo", S.correo)}
     </div>` : ""}
@@ -1009,7 +1140,7 @@ function renderMemos(){
         <div class="pie-texto">${NOMBRE_COLEGIO}<br>Proceso de Matrícula 2027 — Folio ${fichaActual.folio}</div>
       </div>
     </div>`).join("") + `
-    <div class="print-memo">
+    <div class="print-memo ficha-print">
       <div class="encabezado encabezado-ficha">
         <img src="${LOGO_SRC}" alt="Logo">
         <div>
@@ -1299,6 +1430,7 @@ function descargarExcel(){
     "Tipo estudiante": r.tipo==="nuevo"?"Nuevo":"Antiguo",
     "Nombre estudiante": r.estudiante.nombre, "RUT estudiante": r.estudiante.rut,
     "Fecha nacimiento": r.estudiante.fnac, "Dirección": r.estudiante.direccion,
+    "Comuna": r.estudiante.comuna, "Nacionalidad": r.estudiante.nacionalidad,
     "Celular estudiante": r.estudiante.celular, "Correo estudiante": r.estudiante.correo,
     "Colegio procedencia": r.estudiante.procedencia, "Curso 2027": r.estudiante.cursoMatricula || r.estudiante.cursoAnterior || "",
     "Repitencia": r.estudiante.repitencia, "Curso repetido": r.estudiante.repCurso, "Año repetido": r.estudiante.repAnio,
@@ -1306,10 +1438,12 @@ function descargarExcel(){
     "Problema de salud": r.estudiante.salud, "Detalle salud": r.estudiante.saludDetalle,
     "Observaciones": r.estudiante.observaciones,
     "Apoderado titular": r.apoderado.nombre, "RUT apoderado": r.apoderado.rut,
-    "F. nac. apoderado": r.apoderado.fnac, "Dirección apoderado": r.apoderado.direccion,
+    "Edad apoderado": r.apoderado.edad, "Dirección apoderado": r.apoderado.direccion,
+    "Comuna apoderado": r.apoderado.comuna, "Nacionalidad apoderado": r.apoderado.nacionalidad,
     "Celular apoderado": r.apoderado.celular, "Correo apoderado": r.apoderado.correo,
     "Apoderado suplente": r.suplente ? r.suplente.nombre : "", "RUT suplente": r.suplente ? r.suplente.rut : "",
-    "F. nac. suplente": r.suplente ? r.suplente.fnac : "", "Dirección suplente": r.suplente ? r.suplente.direccion : "",
+    "Edad suplente": r.suplente ? r.suplente.edad : "", "Dirección suplente": r.suplente ? r.suplente.direccion : "",
+    "Comuna suplente": r.suplente ? r.suplente.comuna : "", "Nacionalidad suplente": r.suplente ? r.suplente.nacionalidad : "",
     "Celular suplente": r.suplente ? r.suplente.celular : "", "Correo suplente": r.suplente ? r.suplente.correo : ""
   }));
   const ws = XLSX.utils.json_to_sheet(filas);
