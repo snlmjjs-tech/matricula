@@ -645,14 +645,20 @@ function buscarEnNomina(){
   const hint = document.getElementById("e_nomina_hint");
   const rutVal = document.getElementById("e_rut").value.trim();
   const nombreVal = document.getElementById("e_nombre").value.trim().toLowerCase();
-  let alumno = null;
-  if (rutValido(rutVal)) alumno = nomina2026[limpiarRut(rutVal)] || null;
+  let alumno = null, rutKey = null;
+  if (rutValido(rutVal)){
+    rutKey = limpiarRut(rutVal);
+    alumno = nomina2026[rutKey] || null;
+  }
   if (!alumno && nombreVal){
-    alumno = Object.values(nomina2026).find(a => a.nombre.toLowerCase() === nombreVal) || null;
+    const encontrado = Object.entries(nomina2026).find(([,a]) => a.nombre.toLowerCase() === nombreVal);
+    if (encontrado){ rutKey = encontrado[0]; alumno = encontrado[1]; }
   }
   if (!alumno){ hint.textContent = ""; hint.classList.remove("err"); return; }
   const eNombre = document.getElementById("e_nombre");
   if (!eNombre.value.trim()) eNombre.value = alumno.nombre;
+  const eRut = document.getElementById("e_rut");
+  if (!eRut.value.trim() && rutKey) eRut.value = formatearRut(rutKey);
   const eComuna = document.getElementById("e_comuna");
   if (!eComuna.value.trim() && alumno.comuna) eComuna.value = alumno.comuna;
   const retirado = alumno.estado === "Retirado";
