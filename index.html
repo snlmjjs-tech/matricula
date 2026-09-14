@@ -233,12 +233,16 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
         <div class="grid c2">
           <div class="field" style="grid-column:1/-1">
             <label>Nombre completo del estudiante <span class="req">*</span></label>
-            <input type="text" id="e_nombre" autocomplete="off">
+            <input type="text" id="e_nombre" autocomplete="off" list="listaNomina2026">
+            <datalist id="listaNomina2026"></datalist>
           </div>
           <div class="field">
             <label>RUT <span class="req">*</span></label>
             <input type="text" id="e_rut" placeholder="12.345.678-9" inputmode="text">
             <div class="hint" id="e_rut_hint">Se valida el dígito verificador automáticamente.</div>
+          </div>
+          <div class="field solo-antiguo" style="grid-column:1/-1">
+            <div class="hint" id="e_nomina_hint"></div>
           </div>
           <div class="field">
             <label>Fecha de nacimiento <span class="req">*</span></label>
@@ -626,6 +630,39 @@ let codigoPreCargado = null;
 let fotoEstudianteBase64 = null;
 let streamFoto = null;
 
+/* ---------- Nómina de alumnos 2026 (autocompletar comuna de estudiantes antiguos) ---------- */
+let nomina2026 = null;
+fetch("nomina2026.json").then(r => r.ok ? r.json() : null).then(datos => {
+  if (!datos) return;
+  nomina2026 = datos;
+  const dl = document.getElementById("listaNomina2026");
+  const opciones = Object.values(datos).map(a => `<option value="${a.nombre}">`).join("");
+  dl.innerHTML = opciones;
+}).catch(err => console.error("Nómina 2026:", err));
+
+function buscarEnNomina(){
+  if (tipoEstudiante !== "antiguo" || !nomina2026) return;
+  const hint = document.getElementById("e_nomina_hint");
+  const rutVal = document.getElementById("e_rut").value.trim();
+  const nombreVal = document.getElementById("e_nombre").value.trim().toLowerCase();
+  let alumno = null;
+  if (rutValido(rutVal)) alumno = nomina2026[limpiarRut(rutVal)] || null;
+  if (!alumno && nombreVal){
+    alumno = Object.values(nomina2026).find(a => a.nombre.toLowerCase() === nombreVal) || null;
+  }
+  if (!alumno){ hint.textContent = ""; hint.classList.remove("err"); return; }
+  const eNombre = document.getElementById("e_nombre");
+  if (!eNombre.value.trim()) eNombre.value = alumno.nombre;
+  const eComuna = document.getElementById("e_comuna");
+  if (!eComuna.value.trim() && alumno.comuna) eComuna.value = alumno.comuna;
+  const retirado = alumno.estado === "Retirado";
+  hint.classList.toggle("err", retirado);
+  hint.textContent = `📋 Encontrado en la nómina 2026: ${alumno.nombre} — Curso 2026: ${alumno.curso || "—"} — Comuna: ${alumno.comuna || "—"}`
+    + (retirado ? " — ⚠️ Figura como RETIRADO en 2026." : "");
+}
+document.getElementById("e_rut").addEventListener("blur", buscarEnNomina);
+document.getElementById("e_nombre").addEventListener("blur", buscarEnNomina);
+
 // Modo apoderado: se activa al abrir el link con ?apoderado (desde el QR)
 const MODO_APODERADO = new URLSearchParams(location.search).has("apoderado");
 if (MODO_APODERADO){
@@ -658,6 +695,8 @@ function iniciarFicha(tipo){
   document.querySelectorAll(".subfields").forEach(s=>s.classList.remove("show"));
   document.querySelectorAll("input.bad,select.bad").forEach(i=>i.classList.remove("bad"));
   document.getElementById("bannerErr").classList.remove("show");
+  document.getElementById("e_nomina_hint").textContent = "";
+  document.getElementById("e_nomina_hint").classList.remove("err");
   document.getElementById("tipoLabel").textContent = tipo==="nuevo" ? "Estudiante nuevo" : "Estudiante antiguo";
   document.querySelectorAll(".solo-nuevo").forEach(el=>el.style.display = tipo==="nuevo" ? "" : "none");
   document.querySelectorAll(".solo-antiguo").forEach(el=>el.style.display = tipo==="antiguo" ? "" : "none");
