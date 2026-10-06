@@ -466,6 +466,7 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn btn-ghost" onclick="volverInicio()">← Inicio</button>
         <button class="btn btn-gold" id="btnDescargarExcel" onclick="descargarExcel()">⬇️ Descargar Excel</button>
+        <button class="btn btn-ghost" onclick="descargarExcelLibro()">📘 Excel formato libro digital</button>
       </div>
     </div>
     <div class="admin-filtros">
@@ -1496,6 +1497,40 @@ function descargarExcel(){
   XLSX.utils.book_append_sheet(wb, ws, "Matrículas 2027");
   const filtrado = registrosVisibles.length !== registros.length;
   XLSX.writeFile(wb, filtrado ? "Matriculas_INCOSAF_2027_filtrado.xlsx" : "Matriculas_INCOSAF_2027.xlsx");
+}
+
+// Mismas columnas y orden que la plantilla "Nómina" del colegio, para subir los estudiantes al libro digital
+function descargarExcelLibro(){
+  if (!registrosVisibles.length){ aviso("Sin datos","No hay matrículas para exportar con el filtro actual."); return; }
+  const fechaIso = txt => { const m = /^(\d{1,2})-(\d{1,2})-(\d{4})/.exec(txt||""); return m ? `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}` : ""; };
+  const filas = registrosVisibles.map(r=>{
+    const E = r.estudiante, A = r.apoderado, S = r.suplente;
+    return {
+      "N° Matrícula": r.folio,
+      "Curso": E.cursoMatricula || E.cursoAnterior || "",
+      "Nombre": (E.nombre||"").toUpperCase(),
+      "RUN": E.rut,
+      "Edad": parseInt(calcularEdad(E.fnac)) || "",
+      "Comuna": (E.comuna||"").toUpperCase(),
+      "Fecha ingreso": fechaIso(r.fechaRegistro),
+      "Fecha retiro": "",
+      "Estado": "Activo",
+      "Dirección": E.direccion, "Fecha nacimiento": E.fnac, "Nacionalidad": E.nacionalidad,
+      "Celular": E.celular, "Correo": E.correo, "Colegio procedencia": E.procedencia,
+      "Curso próximo año": "",
+      "Repitencia": E.repitencia, "PIE": E.pie, "Diagnóstico PIE": E.pieDiagnostico,
+      "Problema de salud": E.salud, "Detalle salud": E.saludDetalle,
+      "Observaciones matrícula": E.observaciones,
+      "Apoderado titular": A.nombre, "RUT apoderado": A.rut, "Dirección apoderado": A.direccion,
+      "Comuna apoderado": A.comuna, "Celular apoderado": A.celular, "Correo apoderado": A.correo,
+      "Apoderado suplente": S ? S.nombre : "", "RUT suplente": S ? S.rut : "",
+      "Celular suplente": S ? S.celular : "", "Correo suplente": S ? S.correo : ""
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(filas);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Nómina 2027");
+  XLSX.writeFile(wb, "Nomina_INCOSAF_2027_libro_digital.xlsx");
 }
 </script>
 </body>
