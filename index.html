@@ -105,6 +105,7 @@ input.bad{border-color:var(--error);background:#fdf3f2}
 .ficha-datos{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;flex:1}
 .ficha-datos .dato .label{display:block;font-size:.68rem;color:var(--gris);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
 .ficha-datos .dato .valor{display:block}
+.ficha-foto:has(img){padding:0}
 .ficha-subtitulo{margin:16px 0 6px;font-size:.85rem;color:var(--azul);font-weight:800;text-transform:uppercase;letter-spacing:.5px}
 
 /* ---------- Modal ---------- */
@@ -168,7 +169,7 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
   .pie-pagina img{width:26pt;height:26pt;object-fit:contain}
   .pie-pagina .pie-texto{font-size:7.5pt;color:#444;line-height:1.4}
   .print-memo .ficha-datos{font-size:9pt;gap:2pt 14pt}
-  .print-memo .ficha-foto{width:2.2cm;height:2.8cm}
+  .print-memo .ficha-foto{width:3cm;height:4cm}
   .print-memo .ficha-top{margin-bottom:2pt}
   .print-memo .ficha-subtitulo{margin:4pt 0 1pt;font-size:.8rem}
   .print-memo .encabezado-ficha{display:flex;align-items:center;justify-content:center;gap:10pt;text-align:left;margin-bottom:3pt}
@@ -757,9 +758,11 @@ function capturarFoto(){
   const video = document.getElementById("videoFoto");
   if (!video.videoWidth){ return; }
   const canvas = document.getElementById("canvasFoto");
-  canvas.width = 480;
-  canvas.height = Math.round(480 * (video.videoHeight / video.videoWidth));
-  canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+  // Recorte vertical 3:4 centrado (formato carnet)
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const sw = Math.min(vw, vh * 3 / 4), sh = sw * 4 / 3;
+  canvas.width = 360; canvas.height = 480;
+  canvas.getContext("2d").drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, canvas.width, canvas.height);
   window._fotoTempDataUrl = canvas.toDataURL("image/jpeg", 0.85);
   document.getElementById("previewFoto").src = window._fotoTempDataUrl;
   document.getElementById("previewFoto").style.display = "";
