@@ -493,7 +493,7 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
     <p class="contador" id="contador"></p><br>
     <div class="tabla-scroll">
       <table class="lista">
-        <thead><tr><th>Folio</th><th>Fecha</th><th>Tipo</th><th>Estudiante</th><th>RUT</th><th>Curso 2027 / Procedencia</th><th>Apoderado</th><th>Celular</th><th></th></tr></thead>
+        <thead><tr><th>Ficha</th><th>Fecha</th><th>Tipo</th><th>Estudiante</th><th>RUT</th><th>Curso 2027 / Procedencia</th><th>Apoderado</th><th>Celular</th><th></th></tr></thead>
         <tbody id="tbodyAdmin"><tr><td colspan="9">Cargando…</td></tr></tbody>
       </table>
     </div>
@@ -952,7 +952,7 @@ document.getElementById("ficha").addEventListener("submit", async e=>{
 
   // Modo profesor: obtener folio secuencial
   const btnGenerar = e.target.querySelector('button[type="submit"]');
-  btnGenerar.disabled = true; btnGenerar.textContent = "Generando folio…";
+  btnGenerar.disabled = true; btnGenerar.textContent = "Generando ficha…";
   let numeroFolio = null;
   try{
     if (!db) throw new Error("Firebase no está configurado.");
@@ -961,7 +961,7 @@ document.getElementById("ficha").addEventListener("submit", async e=>{
     else throw new Error("La transacción del contador no se completó.");
   }catch(err){
     console.error("Folio:", err);
-    aviso("No se pudo generar el folio",
+    aviso("No se pudo generar el número de ficha",
       "Firebase rechazó la escritura del contador de folios.<br><br><b>Causa más común:</b> las reglas de la base de datos no permiten escribir en <code>contadorFolio2027</code>. Actualiza las reglas en la consola de Firebase.<br><br>Detalle técnico: " + err.message);
   }
   btnGenerar.disabled = false; btnGenerar.textContent = "Generar documentos de matrícula →";
@@ -1202,7 +1202,7 @@ function renderMemos(){
     <div class="print-memo">
       <div class="encabezado">
         <div class="colegio">${NOMBRE_COLEGIO}</div>
-        <div class="sub">Proceso de Matrícula 2027 — Folio ${fichaActual.folio}</div>
+        <div class="sub">Proceso de Matrícula 2027 — Ficha ${fichaActual.folio}</div>
       </div>
       <h2>${m.titulo}</h2>
       <div class="cuerpo">${m.cuerpo}</div>
@@ -1210,7 +1210,7 @@ function renderMemos(){
       <div class="firma"><span class="linea-firma">${m.firma}</span></div>
       <div class="pie-pagina">
         <img src="${LOGO_SRC}" alt="Logo">
-        <div class="pie-texto">${NOMBRE_COLEGIO}<br>Proceso de Matrícula 2027 — Folio ${fichaActual.folio}</div>
+        <div class="pie-texto">${NOMBRE_COLEGIO}<br>Proceso de Matrícula 2027 — Ficha ${fichaActual.folio}</div>
       </div>
     </div>`).join("") + `
     <div class="print-memo ficha-print">
@@ -1218,13 +1218,13 @@ function renderMemos(){
         <img src="${LOGO_SRC}" alt="Logo">
         <div>
           <div class="colegio">${NOMBRE_COLEGIO}</div>
-          <div class="sub">Proceso de Matrícula 2027 — Folio ${fichaActual.folio}</div>
+          <div class="sub">Proceso de Matrícula 2027 — Ficha ${fichaActual.folio}</div>
         </div>
       </div>
       ${fichaAntecedentesInterior(fichaActual)}
       <div class="pie-pagina">
         <img src="${LOGO_SRC}" alt="Logo">
-        <div class="pie-texto">${NOMBRE_COLEGIO}<br>Proceso de Matrícula 2027 — Folio ${fichaActual.folio}</div>
+        <div class="pie-texto">${NOMBRE_COLEGIO}<br>Proceso de Matrícula 2027 — Ficha ${fichaActual.folio}</div>
       </div>
     </div>`;
 }
@@ -1267,7 +1267,7 @@ function generarComprobantePDFBase64(f){
 
   const yFolio = 80 + lineas.length*6 + 14;
   doc.setFontSize(10);
-  doc.text(`Folio de matrícula: ${f.folio}`, 20, yFolio);
+  doc.text(`Ficha de matrícula: ${f.folio}`, 20, yFolio);
   const hoy = new Date().toLocaleDateString("es-CL", { day:"numeric", month:"long", year:"numeric" });
   doc.text(`San Fernando, ${hoy}.`, 20, yFolio+8);
 
@@ -1302,7 +1302,7 @@ async function finalizarMatricula(){
 `Estimado(a) ${fichaActual.apoderado.nombre}:
 Confirmamos la matrícula 2027 en ${NOMBRE_COLEGIO}.
 
-Folio: ${fichaActual.folio}
+Ficha: ${fichaActual.folio}
 Estudiante: ${E.nombre} (RUT ${E.rut})
 Tipo: ${fichaActual.tipo==="nuevo"?"Estudiante nuevo":"Estudiante antiguo"}
 ${fichaActual.tipo==="nuevo" ? "Colegio de procedencia: "+E.procedencia : "Curso 2027: "+E.cursoMatricula}
@@ -1326,10 +1326,10 @@ ${NOMBRE_COLEGIO}`;
             body: JSON.stringify({
               secreto: APPS_SCRIPT_SECRETO,
               to: correo,
-              subject: `Confirmación de matrícula 2027 - Folio ${fichaActual.folio}`,
+              subject: `Confirmación de matrícula 2027 - Ficha ${fichaActual.folio}`,
               body: detalle,
               pdfBase64: comprobantePdf,
-              pdfName: `Certificado_matricula_folio_${fichaActual.folio}.pdf`
+              pdfName: `Certificado_matricula_ficha_${fichaActual.folio}.pdf`
             })
           });
           const data = await resp.json();
@@ -1344,7 +1344,7 @@ ${NOMBRE_COLEGIO}`;
       }
     }
 
-    document.getElementById("folioTxt").textContent = "Folio " + fichaActual.folio;
+    document.getElementById("folioTxt").textContent = "Ficha " + fichaActual.folio;
     document.getElementById("doneMail").textContent = msgMail;
     cerrar("ovFirma");
     mostrar("scr-done");
@@ -1499,7 +1499,7 @@ async function eliminarMatricula(){
 function descargarExcel(){
   if (!registrosVisibles.length){ aviso("Sin datos","No hay matrículas para exportar con el filtro actual."); return; }
   const filas = registrosVisibles.map(r=>({
-    "Folio": r.folio, "Fecha registro": r.fechaRegistro,
+    "Ficha": r.folio, "Fecha registro": r.fechaRegistro,
     "Tipo estudiante": r.tipo==="nuevo"?"Nuevo":"Antiguo",
     "Nombre estudiante": r.estudiante.nombre, "RUT estudiante": r.estudiante.rut,
     "Fecha nacimiento": r.estudiante.fnac, "Dirección": r.estudiante.direccion,
