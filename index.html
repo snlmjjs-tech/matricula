@@ -443,6 +443,7 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
       <h2>Matrícula registrada</h2>
       <div class="folio" id="folioTxt"></div>
       <p id="doneMail"></p>
+      <p id="doneSpam" style="font-size:.8rem">Si el apoderado no ve el correo, debe revisar la carpeta de <b>spam</b> o correo no deseado.</p>
       <p>Los datos quedaron guardados en la base de datos central y ya están disponibles para el equipo del establecimiento.</p>
       <br>
       <button class="btn btn-pri" onclick="nuevaMatricula()">Registrar otra matrícula</button>
@@ -593,6 +594,7 @@ table.lista tr:nth-child(even) td{background:var(--papel)}
    ⚙️ CONFIGURACIÓN — completa estos datos antes de usar
    ========================================================== */
 const NOMBRE_COLEGIO = "Instituto Comercial Alberto Valenzuela Llanos de San Fernando";
+const CONTACTO_COLEGIO = { correo: "lissette.maldonado@slepcolchagua.cl", telefono: "72 2847263", direccion: "Av. Manso de Velasco 389, San Fernando" };
 const CLAVE_ADMIN = "incosaf2027"; // 🔑 cámbiala por la que quieras
 const LOGO_SRC = document.querySelector(".logo-header").src; // reutiliza el mismo logo del encabezado en los documentos impresos
 
@@ -1316,7 +1318,12 @@ Documentos firmados por el apoderado:
 Se adjunta además el certificado de matrícula en PDF.
 
 Atentamente,
-${NOMBRE_COLEGIO}`;
+${NOMBRE_COLEGIO}
+
+--
+Este es un correo automático de confirmación de matrícula.
+Para consultas escriba a: ${CONTACTO_COLEGIO.correo} · Teléfono: ${CONTACTO_COLEGIO.telefono}
+${NOMBRE_COLEGIO} · ${CONTACTO_COLEGIO.direccion}`;
         let comprobantePdf = null;
         try{ comprobantePdf = generarComprobantePDFBase64(fichaActual); }
         catch(err){ console.error("Comprobante PDF:", err); }
@@ -1328,6 +1335,7 @@ ${NOMBRE_COLEGIO}`;
               to: correo,
               subject: `Confirmación de matrícula 2027 - Ficha ${fichaActual.folio}`,
               body: detalle,
+              replyTo: CONTACTO_COLEGIO.correo,
               pdfBase64: comprobantePdf,
               pdfName: `Certificado_matricula_ficha_${fichaActual.folio}.pdf`
             })
@@ -1346,6 +1354,7 @@ ${NOMBRE_COLEGIO}`;
 
     document.getElementById("folioTxt").textContent = "Ficha " + fichaActual.folio;
     document.getElementById("doneMail").textContent = msgMail;
+    document.getElementById("doneSpam").style.display = msgMail.startsWith("Se envió") ? "" : "none";
     cerrar("ovFirma");
     mostrar("scr-done");
   }catch(err){
