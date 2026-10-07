@@ -803,6 +803,30 @@ function rutValido(r){
   inp.addEventListener("input",()=>{ inp.value = formatearRut(inp.value); });
 });
 
+/* ---------- Datos de prueba: escribir 2179 en el RUT del estudiante y salir del campo (solo modo profesor) ---------- */
+function llenarDatosPrueba(){
+  const set = (id,val)=>{ document.getElementById(id).value = val; };
+  set("e_nombre","Prueba de Matrículas"); set("e_rut","11.111.111-1"); set("e_fnac","2012-03-15");
+  set("e_dir","Calle de Prueba 393"); set("e_comuna","San Fernando"); set("e_nacionalidad","Chilena");
+  set("e_cel","393893"); set("e_mail","");
+  if (tipoEstudiante==="nuevo"){ set("e_procedencia","Colegio de Prueba"); }
+  else { set("e_cursoAnt","1° Medio"); set("e_letraAnt","A"); }
+  ["rep","pie","salud"].forEach(g=>{ setRadio(g,"no"); toggleSub(g); });
+  set("e_obs","Matrícula de prueba — borrar");
+  set("a_nombre","Apoderado de Prueba"); set("a_rut","12.345.678-5"); set("a_edad","40");
+  set("a_dir","Calle de Prueba 393"); set("a_comuna","San Fernando"); set("a_nacionalidad","Chilena");
+  set("a_cel","393893"); set("a_mail","");
+  setRadio("sup","si"); toggleSub("sup");
+  set("s_nombre","Suplente de Prueba"); set("s_rut","18.516.142-0"); set("s_edad","38");
+  set("s_dir","Calle de Prueba 393"); set("s_comuna","San Fernando"); set("s_nacionalidad","Chilena");
+  set("s_cel","393893"); set("s_mail","");
+  document.querySelectorAll("input.bad,select.bad").forEach(i=>i.classList.remove("bad"));
+  document.getElementById("e_nomina_hint").textContent = "🧪 Datos de prueba cargados. Escribe un correo en el apoderado para probar el envío del certificado.";
+}
+document.getElementById("e_rut").addEventListener("blur", ()=>{
+  if (!MODO_APODERADO && limpiarRut(document.getElementById("e_rut").value)==="2179") llenarDatosPrueba();
+});
+
 /* ---------- Validación ---------- */
 function marcar(el, malo){ el.classList.toggle("bad", malo); return !malo; }
 function validarFicha(){
