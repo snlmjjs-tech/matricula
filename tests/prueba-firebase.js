@@ -59,7 +59,10 @@ function crearGoogle() {
     ContentService: { createTextOutput: t => ({ t, setMimeType() { return this; } }), MimeType: { JSON: 'json' } }
   };
   vm.createContext(ctx); vm.runInContext(CODIGO, ctx);
-  return { correos, ctx, post: cuerpo => JSON.parse(ctx.doPost({ postData: { length: cuerpo.length, contents: cuerpo } }).t) };
+  // Script de Google que ya está publicado (formato anterior): un correo con UN adjunto, sin lista de certificados
+  const postAntiguo = cuerpo => { const d = JSON.parse(cuerpo); if (d.secreto !== SECRETO || !d.to) return { ok: false, error: 'no autorizado' };
+    correos.push({ to: d.to, asunto: d.subject, cuerpo: d.body, op: { attachments: d.pdfBase64 ? [{ tipo: 'application/pdf', nombre: d.pdfName }] : [], replyTo: d.replyTo }, antiguo: true }); return { ok: true }; };
+  return { correos, ctx, postAntiguo, antiguo: false, post: cuerpo => JSON.parse(ctx.doPost({ postData: { length: cuerpo.length, contents: cuerpo } }).t) };
 }
 
 const tipos = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json' };
@@ -80,11 +83,11 @@ async function abrir(url, { dl = false } = {}) {
     const c = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' };
     if (ruta.request().method() === 'OPTIONS') return ruta.fulfill({ status: 204, headers: c });
     const cuerpo = ruta.request().postData(); peticiones.push(JSON.parse(cuerpo));
-    ruta.fulfill({ status: 200, headers: { ...c, 'content-type': 'application/json' }, body: JSON.stringify(google.post(cuerpo)) });
+    ruta.fulfill({ status: 200, headers: { ...c, 'content-type': 'application/json' }, body: JSON.stringify(google.antiguo ? google.postAntiguo(cuerpo) : google.post(cuerpo)) });
   });
   await pg.goto(base + url); await pg.waitForTimeout(600); return pg;
 }
-const fb = pg => pg.evaluate(() => JSON.parse(JSON.stringify(window.__FB.datos)));
+const fb = pg => pg.evaluate(() => { const d = JSON.parse(JSON.stringify(window.__FB.datos)); const m = d.matriculas2027 || {}; d.solicitudes2027 = m._solicitudes || {}; delete m._solicitudes; d.matriculas2027 = m; return d; });
 const pant = pg => pg.evaluate(() => document.querySelector('.screen.active')?.id);
 const entrar = async (pg, c = INTERNA) => { await pg.fill('#inputClaveInterna', c); await pg.press('#inputClaveInterna', 'Enter'); await pg.waitForTimeout(500); };
 const radioPill = (pg, sel) => pg.click('label.radio-pill:has(' + sel + ')');
@@ -177,6 +180,16 @@ const H = [
     ok('el estado pasa a «enviado»', d.solicitudes2027[dora._solicitud].correo_estado === 'enviado');
     await pg.click('#btnReintentarCorreo').catch(() => {});
 
+    sec('4b) Con el script de Google que ya está publicado (sin actualizarlo)');
+    google.antiguo = true; const antesA = google.correos.length;
+    await pg.click('button[data-click=nuevaMatricula]'); await pg.evaluate(() => iniciarFicha('antiguo')); await pg.waitForTimeout(200);
+    await llenarEst(pg, 1, { ...H[0], rut: rut(45000001), nombre: 'Fran TEST Seis' }); await pg.click('#btnAddEst'); await llenarEst(pg, 2, { ...H[1], rut: rut(45000002), nombre: 'Gael TEST Siete' });
+    await llenarApoderado(pg); await enviar(pg); await pg.click('#btnConfirmarResumen'); await pg.waitForTimeout(700); await finalizar(pg);
+    const nuevosA = google.correos.slice(antesA);
+    ok('envía un correo por estudiante, cada uno con su certificado PDF', nuevosA.length === 2 && nuevosA.every(c => c.op.attachments.length === 1 && c.to === DEST) && /Ficha 6/.test(nuevosA[0].asunto) && /Ficha 7/.test(nuevosA[1].asunto), JSON.stringify(nuevosA.map(c => c.asunto)));
+    ok('la pantalla final informa los 2 correos', /Se enviaron 2 correos/.test(await pg.textContent('#doneMail')), await pg.textContent('#doneMail'));
+    google.antiguo = false;
+
     sec('5) Seguridad del script de correo');
     const base64 = Buffer.from('%PDF-1.4\n' + 'x'.repeat(200) + '\n%%EOF').toString('base64');
     const buena = { secreto: SECRETO, solicitudId: crypto.randomUUID(), to: DEST, apoderado: 'A', certificados: [{ folio: '9', nombre: 'N', rut: '1-9', tipo: 'nuevo', pdfBase64: base64 }] };
@@ -193,7 +206,7 @@ const H = [
     await pg.evaluate(() => { cerrarAcceso(); }); await entrar(pg);
     await pg.click('.admin-link'); await pg.fill('#inputClave', ADMIN); await pg.click('#ovClave .btn-pri'); await pg.waitForTimeout(800);
     ok('la clave de encargados abre el panel', await pant(pg) === 'scr-admin');
-    ok('lista las 5 matrículas ordenadas por ficha', (await pg.$$eval('#tbodyAdmin tr', t => t.map(r => r.cells[0].textContent))).join() === '1,2,3,4,5', (await pg.$$eval('#tbodyAdmin tr', t => t.map(r => r.cells[0].textContent))).join());
+    ok('lista las 7 matrículas ordenadas por ficha', (await pg.$$eval('#tbodyAdmin tr', t => t.map(r => r.cells[0].textContent))).join() === '1,2,3,4,5,6,7', (await pg.$$eval('#tbodyAdmin tr', t => t.map(r => r.cells[0].textContent))).join());
     ok('muestra la solicitud (n/total) y el estado del correo', /2\/3/.test(await pg.textContent('#tbodyAdmin')) && /Enviado/.test(await pg.textContent('#tbodyAdmin')));
     const tok = await pg.evaluate(() => tokenAdmin);
     const claves = (await rpc(pg, 'listar_matriculas', { p_clave: tok })).v.map(m => m._key);
@@ -203,11 +216,11 @@ const H = [
     ok('el contador se puede subir', (await rpc(pg, 'establecer_siguiente_folio', { p_clave: tok, p_valor: 50 })).error === undefined && (await rpc(pg, 'ver_siguiente_folio', { p_clave: tok })).v === 50 && (await fb(pg)).contadorFolio2027 === 49);
     await rpc(pg, 'eliminar_matricula', { p_clave: tok, p_id: claves[0] });
     d = await fb(pg);
-    ok('eliminar la única matrícula de una solicitud retira también la solicitud', Object.keys(d.matriculas2027).length === 4 && Object.keys(d.solicitudes2027).length === 2);
+    ok('eliminar la única matrícula de una solicitud retira también la solicitud', Object.keys(d.matriculas2027).length === 6 && Object.keys(d.solicitudes2027).length === 3);
     const hermano = Object.entries(d.matriculas2027).find(([, m]) => m.folio === '3')[0];
     await rpc(pg, 'eliminar_matricula', { p_clave: tok, p_id: hermano });
     d = await fb(pg);
-    ok('eliminar un hermano no toca a los otros dos ni a la solicitud', Object.values(d.matriculas2027).filter(m => ['2', '4'].includes(m.folio)).length === 2 && Object.keys(d.solicitudes2027).length === 2);
+    ok('eliminar un hermano no toca a los otros dos ni a la solicitud', Object.values(d.matriculas2027).filter(m => ['2', '4'].includes(m.folio)).length === 2 && Object.keys(d.solicitudes2027).length === 3);
     const edit = (await rpc(pg, 'listar_matriculas', { p_clave: tok })).v.find(m => m.estudiante.nombre === 'Dora TEST Cuatro');
     const { _key, _solicitud, _orden, _hermanos, _correo, ...ficha } = edit;
     ok('editar una matrícula conserva su solicitud', (await rpc(pg, 'actualizar_matricula', { p_clave: tok, p_id: _key, p_ficha: { ...ficha, estudiante: { ...ficha.estudiante, comuna: 'Comuna EDITADA' } } })).error === undefined && (await fb(pg)).matriculas2027[_key].estudiante.comuna === 'Comuna EDITADA' && (await fb(pg)).matriculas2027[_key]._solicitud === _solicitud);

@@ -1049,37 +1049,66 @@ async function enviarCorreoSolicitud(solicitudId, fichas, token){
   if (certificados.some(c => c.pdfBase64.length > MAX_PDF_BASE64) || total > MAX_TOTAL_BASE64){
     return { estado: "tamano", msg: "Las matrículas se guardaron, pero los certificados superan el tamaño permitido para un correo. No se envió ninguno. Avisa a la administración." };
   }
-  // 3) envío (el script comprueba la clave de envío y los límites; una solicitud ya enviada no se repite)
+  // 3) envío. El script actual adjunta UN certificado por correo; el script nuevo (apps-script/Code.gs) adjunta todos en un solo correo.
+  //    Se envía en un formato que entienden los dos; si responde el actual, los demás certificados salen en correos propios.
+  const datosCert = certificados.map((c, i) => ({ ...c, nombre: fichas[i].estudiante.nombre, rut: fichas[i].estudiante.rut, tipo: fichas[i].tipo,
+    procedencia: fichas[i].estudiante.procedencia || "", curso: fichas[i].estudiante.cursoMatricula || "" }));
   const resultado = await enviarAlScript({
     secreto: APPS_SCRIPT_SECRETO, solicitudId, to: correo, replyTo: CONTACTO_COLEGIO.correo, apoderado: fichas[0].apoderado.nombre,
-    certificados: certificados.map((c, i) => ({ ...c, nombre: fichas[i].estudiante.nombre, rut: fichas[i].estudiante.rut, tipo: fichas[i].tipo,
-      procedencia: fichas[i].estudiante.procedencia || "", curso: fichas[i].estudiante.cursoMatricula || "" }))
-  }, n, correo);
+    certificados: datosCert, ...camposCorreo(fichas[0], certificados[0])
+  }, fichas, certificados, correo);
   // se anota el estado para el panel (si falla, el correo igual salió: no se vuelve a intentar)
   rpc("registrar_correo", { p_clave: token, p_solicitud: solicitudId, p_estado: resultado.estado === "enviado" ? "enviado" : "error" }).catch(() => {});
   return resultado;
 }
 
-async function enviarAlScript(payload, n, correo){
+// Asunto, texto y adjunto de un correo de un solo estudiante (formato que lee el script actual)
+function camposCorreo(f, cert){
+  const A = f.apoderado, E = f.estudiante;
+  const cuerpo = `Estimado(a) ${A.nombre}:
+
+Confirmamos la matrícula 2027 de ${E.nombre} (RUT ${E.rut}) en ${NOMBRE_COLEGIO}.
+
+Ficha de matrícula: ${f.folio}
+Condición: ${f.tipo === "antiguo" ? "Estudiante antiguo" : "Estudiante nuevo"}
+Curso 2027: ${E.cursoMatricula || "No indicado"}
+
+Se adjunta el certificado de matrícula en PDF.
+
+Atentamente,
+${NOMBRE_COLEGIO}
+
+--
+Este es un correo automático de confirmación de matrícula.
+Para consultas escriba a: ${CONTACTO_COLEGIO.correo} · Teléfono: ${CONTACTO_COLEGIO.telefono}
+${NOMBRE_COLEGIO} · ${CONTACTO_COLEGIO.direccion}`;
+  return { subject: `Confirmación de matrícula 2027 - Ficha ${f.folio}`, body: cuerpo, pdfBase64: cert.pdfBase64, pdfName: `Certificado_matricula_ficha_${f.folio}.pdf` };
+}
+
+async function enviarAlScript(payload, fichas, certificados, correo){
+  const n = fichas.length;
+  const post = async cuerpo => (await fetch(APPS_SCRIPT_URL, { method: "POST", body: JSON.stringify(cuerpo) })).json();
   try{
-    const resp = await fetch(APPS_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
-    const data = await resp.json();
+    const data = await post(payload);
     if (data.ok){
-      if (!data.ya_enviado && data.certificados !== n){
-        // El script de Google es una versión antigua (solo adjunta un certificado): hay que actualizarlo
-        return { estado: "error", reintentable: false, msg: "Se envió un correo, pero el script de Google está desactualizado y no adjuntó todos los certificados. Avisa a la administración para actualizar apps-script/Code.gs." };
+      if (data.ya_enviado) return { estado: "enviado", msg: "El correo de esta solicitud ya se había enviado antes; no se repitió. Destinatario: " + correo + "." };
+      if (data.certificados === n || n === 1){
+        return { estado: "enviado", msg: n > 1 ? `Se envió UN correo con los ${n} certificados de matrícula (PDF adjuntos) al correo ${correo}.`
+                                               : "Se envió el certificado de matrícula (con PDF adjunto) al correo " + correo + "." };
       }
-      return { estado: "enviado", msg: data.ya_enviado
-        ? "El correo de esta solicitud ya se había enviado antes; no se repitió. Destinatario: " + correo + "."
-        : n > 1 ? `Se envió UN correo con los ${n} certificados de matrícula (PDF adjuntos) al correo ${correo}.`
-                : "Se envió el certificado de matrícula (con PDF adjunto) al correo " + correo + "." };
+      // Script actual: el primer correo ya salió; cada estudiante restante recibe el suyo
+      for (let i = 1; i < n; i++){
+        const r = await post({ secreto: APPS_SCRIPT_SECRETO, to: correo, replyTo: CONTACTO_COLEGIO.correo, ...camposCorreo(fichas[i], certificados[i]) });
+        if (!r.ok) throw new Error(r.error || "envio_fallido");
+      }
+      return { estado: "enviado", msg: `Se enviaron ${n} correos (uno por estudiante, con su certificado PDF) al correo ${correo}.` };
     }
     if (data.error === "ya_enviado") return { estado: "enviado", msg: "El correo de esta solicitud ya se había enviado antes; no se repitió. Destinatario: " + correo + "." };
     console.error("Correo:", data.error);
-    return { estado: "error", reintentable: true, msg: "Las matrículas se guardaron, pero el correo NO se envió. " + (ERRORES_CORREO[data.error] || "Ocurrió un problema con el envío.") + " Puedes reintentar sin duplicar nada." };
+    return { estado: "error", reintentable: true, msg: "Las matrículas se guardaron, pero el correo NO se envió. " + (ERRORES_CORREO[data.error] || "Ocurrió un problema con el envío.") + " Puedes reintentar." };
   }catch(err){
     console.error(err);
-    return { estado: "error", reintentable: true, msg: "Las matrículas se guardaron, pero el correo NO se envió (no hubo respuesta del servicio de correo). Puedes reintentar sin duplicar nada." };
+    return { estado: "error", reintentable: true, msg: "Las matrículas se guardaron, pero el correo NO se envió (no hubo respuesta del servicio de correo). Puedes reintentar." };
   }
 }
 

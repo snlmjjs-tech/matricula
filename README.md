@@ -31,36 +31,22 @@ público**, así que ordenan el uso pero no son seguridad fuerte: quien lea el c
 
 ## Reglas de Firebase
 
-Esta versión usa cuatro lugares de la base. Publica estas reglas (Consola Firebase → Realtime Database → Reglas):
-
-```json
-{
-  "rules": {
-    "matriculas2027":    { ".read": true, ".write": true },
-    "solicitudes2027":   { ".read": true, ".write": true },
-    "prematriculas2027": { ".read": true, ".write": true },
-    "contadorFolio2027": { ".read": true, ".write": true }
-  }
-}
-```
-
-`solicitudes2027` es nueva (guarda los números de ficha reservados y el estado del correo). Si falta, la página avisa
-«Firebase rechazó la operación…».
+No hace falta cambiar nada: se usan los mismos lugares de siempre (`matriculas2027`, `prematriculas2027`, `contadorFolio2027`).
+Las solicitudes (números de ficha reservados y estado del correo) se guardan dentro de `matriculas2027/_solicitudes`.
 
 ## Correo (Google Apps Script)
 
-1. Entra a script.google.com con la cuenta que enviará los correos (`matriculasincosaf@gmail.com`).
-2. Pega TODO `apps-script/Code.gs` sobre el script actual y guarda.
-3. Implementar → Administrar implementaciones → editar → **Nueva versión** (la URL no cambia).
+Funciona con el script de Google que ya está publicado: sin cambios. Si una solicitud trae varios estudiantes, cada uno
+recibe su correo con su certificado PDF.
 
-Envía **un solo correo por solicitud** con un certificado PDF por estudiante. Si el script quedó desactualizado, la página
-lo detecta y avisa.
+Opcional: `apps-script/Code.gs` es una versión nueva que envía **un solo correo** con todos los certificados y no repite
+envíos. Para usarla, pégala en el script y publica una *Nueva versión* (la URL no cambia). La página detecta cuál de los dos hay.
 
 ## Antes de matricular de verdad
 
 1. Panel → eliminar las matrículas de prueba.
 2. Panel → 🔢 Contador de folio → 1.
-3. En Firebase, borrar `prematriculas2027` y `solicitudes2027` de pruebas.
+3. En Firebase, borrar `prematriculas2027` de pruebas y `matriculas2027/_solicitudes` (se borra solo si eliminas todas las matrículas).
 4. Guardar un Excel de respaldo cada día.
 
 ## Pruebas

@@ -5,7 +5,7 @@
    app.js llama a estas operaciones por su nombre (rpc("guardar_solicitud", …)); aquí se implementan
    contra Firebase. Los datos se guardan en:
      matriculas2027/<id>      una matrícula (la ficha + _solicitud y _orden si vino de una solicitud)
-     solicitudes2027/<id>     folios reservados de una solicitud, estado y estado del correo
+     matriculas2027/_solicitudes/<id>  folios reservados de una solicitud, estado y estado del correo
      prematriculas2027/<cod>  pre-matrículas de apoderados (código → datos)
      contadorFolio2027        último N° de ficha entregado
    ⚠️ Las claves de abajo viajan en este archivo (la página es estática): sirven para ordenar el uso
@@ -34,6 +34,8 @@ try {
 
 const DATOS = (() => {
   const MAX_ESTUDIANTES = 5;
+  // Solicitudes (folios reservados y estado del correo): dentro de matriculas2027 para no necesitar reglas nuevas en Firebase
+  const SOL = "matriculas2027/_solicitudes";
   const DURACION = { admin: 3 * 3600e3, interna: 12 * 3600e3 };   // vigencia de la sesión (ms)
   const ALFABETO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";            // sin 0, 1, I ni O
 
@@ -74,7 +76,7 @@ const DATOS = (() => {
   async function leer(ruta){ const s = await exigirDb().ref(ruta).get(); return s.exists() ? s.val() : null; }
   async function todasLasMatriculas(){
     const v = (await leer("matriculas2027")) || {};
-    return Object.entries(v).map(([id, ficha]) => ({ id, ...ficha }));
+    return Object.entries(v).filter(([id]) => id !== "_solicitudes").map(([id, ficha]) => ({ id, ...ficha }));
   }
   const folioNum = x => parseInt(x.folio, 10);
 
@@ -99,7 +101,7 @@ const DATOS = (() => {
       if (!Number.isInteger(p_cantidad) || p_cantidad < 1 || p_cantidad > MAX_ESTUDIANTES){
         throw fallo("dato_invalido", `se pueden matricular entre 1 y ${MAX_ESTUDIANTES} estudiantes por solicitud`);
       }
-      const ref = exigirDb().ref("solicitudes2027/" + p_solicitud);
+      const ref = exigirDb().ref(SOL + "/" + p_solicitud);
       const previa = await ref.get();
       if (previa.exists()){
         const s = previa.val();
@@ -121,7 +123,7 @@ const DATOS = (() => {
       if (!Array.isArray(p_fichas) || p_fichas.length < 1 || p_fichas.length > MAX_ESTUDIANTES){
         throw fallo("dato_invalido", `se pueden matricular entre 1 y ${MAX_ESTUDIANTES} estudiantes por solicitud`);
       }
-      const sol = await leer("solicitudes2027/" + p_solicitud);
+      const sol = await leer(SOL + "/" + p_solicitud);
       if (!sol) throw fallo("solicitud_invalida", "la solicitud no existe; vuelve a generar los documentos");
       if (sol.cantidad !== p_fichas.length) throw fallo("solicitud_invalida", "la cantidad de estudiantes no coincide con la reservada");
       const existentes = await todasLasMatriculas();
@@ -163,8 +165,8 @@ const DATOS = (() => {
                                .sort((a, b) => folioNum(a) - folioNum(b))[0];
         if (otra) advertencias.push({ orden: i + 1, folio_existente: folioNum(otra) });
       });
-      cambios[`solicitudes2027/${p_solicitud}/estado`] = "guardada";
-      cambios[`solicitudes2027/${p_solicitud}/correo_estado`] = correoEstado;
+      cambios[`${SOL}/${p_solicitud}/estado`] = "guardada";
+      cambios[`${SOL}/${p_solicitud}/correo_estado`] = correoEstado;
       await db.ref().update(cambios);
       return { ok: true, repetida: false, matriculas: ids, correo_estado: correoEstado, advertencias };
     },
@@ -173,14 +175,14 @@ const DATOS = (() => {
     async registrar_correo({ p_clave, p_solicitud, p_estado }){
       exigir(p_clave, "interna");
       if (!["pendiente", "enviado", "error", "sin_correo"].includes(p_estado)) return null;
-      if (!(await leer("solicitudes2027/" + p_solicitud))) return null;
-      await db.ref(`solicitudes2027/${p_solicitud}/correo_estado`).set(p_estado);
+      if (!(await leer(SOL + "/" + p_solicitud))) return null;
+      await db.ref(`${SOL}/${p_solicitud}/correo_estado`).set(p_estado);
       return p_estado;
     },
 
     async listar_matriculas({ p_clave }){
       exigir(p_clave, "admin");
-      const [mats, sols] = await Promise.all([todasLasMatriculas(), leer("solicitudes2027")]);
+      const [mats, sols] = await Promise.all([todasLasMatriculas(), leer(SOL)]);
       const cuenta = {};
       mats.forEach(m => { if (m._solicitud) cuenta[m._solicitud] = (cuenta[m._solicitud] || 0) + 1; });
       return mats.map(({ id, ...ficha }) => ({
@@ -213,7 +215,7 @@ const DATOS = (() => {
       await exigirDb().ref("matriculas2027/" + p_id).remove();
       if (v && v._solicitud){
         const quedan = (await todasLasMatriculas()).some(m => m._solicitud === v._solicitud);
-        if (!quedan) await db.ref("solicitudes2027/" + v._solicitud).remove();
+        if (!quedan) await db.ref(SOL + "/" + v._solicitud).remove();
       }
       return null;
     },
