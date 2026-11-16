@@ -1108,7 +1108,7 @@ async function enviarAlScript(payload, fichas, certificados, correo){
     return { estado: "error", reintentable: true, msg: "Las matrículas se guardaron, pero el correo NO se envió. " + (ERRORES_CORREO[data.error] || "Ocurrió un problema con el envío.") + " Puedes reintentar." };
   }catch(err){
     console.error(err);
-    return { estado: "error", reintentable: true, msg: "Las matrículas se guardaron, pero el correo NO se envió (no hubo respuesta del servicio de correo). Puedes reintentar." };
+    return { estado: "error", reintentable: true, msg: "Las matrículas se guardaron, pero el correo NO se envió (no hubo respuesta del servicio de correo). Puedes reintentar. Detalle técnico: " + String((err && err.message) || err).slice(0, 120) + "." };
   }
 }
 
@@ -1137,6 +1137,22 @@ async function finalizarMatricula(){
   }
 }
 
+// Descarga el certificado PDF de una ficha (sirve aunque el correo no salga)
+function descargarCertificado(folio){
+  const f = solicitudGuardada && solicitudGuardada.fichas.find(x => String(x.folio) === String(folio));
+  if (!f) return;
+  try{
+    const bytes = Uint8Array.from(atob(generarComprobantePDFBase64(f)), c => c.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+    const a = el("a", { href: url, download: `Certificado_matricula_ficha_${f.folio}.pdf` });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }catch(err){
+    console.error(err);
+    aviso("No se pudo generar el certificado", "Ocurrió un problema al crear el PDF. Inténtalo nuevamente.");
+  }
+}
+
 function listaFolios(fichas){
   const f = fichas.map(x => x.folio);
   return f.length === 1 ? f[0] : f.slice(0, -1).join(", ") + " y " + f[f.length - 1];
@@ -1152,6 +1168,8 @@ function mostrarFinal(resultado, guardado){
       el("div", { class: "resumen-fila" }, el("b", { texto: "Matrícula:" }), el("span", { class: "estado ok", texto: "Guardada" }),
         el("b", { texto: "Certificado:" }), el("span", { class: "estado " + (resultado.estado === "enviado" ? "ok" : "pend"), texto: resultado.estado === "enviado" ? "Enviado" : "Pendiente" })))) : []));
   document.getElementById("doneMail").textContent = resultado.msg;
+  document.getElementById("doneDescargas").replaceChildren(...fichas.map(f =>
+    el("button", { type: "button", class: "btn btn-ghost", texto: `⬇️ Descargar certificado PDF (Ficha ${f.folio})`, datos: { click: "descargarCertificado", args: JSON.stringify([String(f.folio)]) } })));
   document.getElementById("doneSpam").style.display = resultado.estado === "enviado" ? "" : "none";
   document.getElementById("btnReintentarCorreo").style.display = resultado.reintentable ? "" : "none";
   const adv = (guardado && guardado.advertencias) || [];
@@ -1573,7 +1591,7 @@ const ACCIONES = {
   toggleSub, validarClave, volverInicio,
   // varios estudiantes y correo
   anadirEstudiante, cambiarTipo, pedirQuitarEstudiante, confirmarQuitarEstudiante, confirmarResumen, editarEstudianteResumen,
-  reintentarCorreo, reenviarCorreo,
+  reintentarCorreo, reenviarCorreo, descargarCertificado,
   // botones de las filas del panel
   imprimirFichaMatricula, abrirFolioFicha, editarMatricula, confirmarEliminar
 };
