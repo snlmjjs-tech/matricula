@@ -145,6 +145,9 @@ const H = [
     ok('el script envió UN correo con 1 certificado PDF al apoderado', google.correos.length === 1 && google.correos[0].to === DEST && google.correos[0].op.attachments.length === 1 && google.correos[0].op.attachments[0].tipo === 'application/pdf');
     ok('el asunto dice «Ficha 1» y trae Reply-To', /Ficha 1$/.test(google.correos[0].asunto) && !!google.correos[0].op.replyTo);
     ok('la pantalla final dice que se envió', await pant(pg) === 'scr-done' && /Se envió/.test(await pg.textContent('#doneMail')), await pg.textContent('#doneMail'));
+    const esperaPdf = pg.waitForEvent('download'); await pg.click('#doneDescargas button'); const pdfDescargado = await esperaPdf;
+    const rutaPdf = await pdfDescargado.path();
+    ok('el botón descarga el certificado PDF de la ficha', /Certificado_matricula_ficha_1\.pdf/.test(pdfDescargado.suggestedFilename()) && fs.readFileSync(rutaPdf).slice(0, 5).toString() === '%PDF-');
     ok('sin errores de página ni violaciones de la política de seguridad', pg.errores.length === 0 && (await pg.evaluate(() => window.__csp)).length === 0, pg.errores.join('|'));
 
     sec('3) Tres hermanos en una solicitud: resumen, fichas seguidas y UN correo');
