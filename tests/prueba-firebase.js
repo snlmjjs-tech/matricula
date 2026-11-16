@@ -72,11 +72,12 @@ const servir = () => new Promise(res => { const s = http.createServer((q, r) => 
 let navegador, base, google;
 const peticiones = [];
 
-async function abrir(url, { dl = false } = {}) {
+async function abrir(url, { dl = false, correo = true } = {}) {
   const ctx = await navegador.newContext({ viewport: { width: 1100, height: 900 }, acceptDownloads: dl }); const pg = await ctx.newPage(); pg.errores = [];
   await pg.addInitScript(() => { window.__csp = []; document.addEventListener('securitypolicyviolation', e => window.__csp.push(e.violatedDirective)); });
   pg.on('pageerror', e => pg.errores.push(String(e)));
   await pg.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+  await pg.route(/js\/app\.js/, async r => { const resp = await r.fetch(); let t = await resp.text(); if (correo) t = t.replace('const ENVIAR_CORREO = false;', 'const ENVIAR_CORREO = true;'); r.fulfill({ response: resp, body: t }); });
   await pg.route(/vendor\/firebase-app-compat/, r => r.fulfill({ status: 200, contentType: 'application/javascript', body: FIREBASE_FALSO }));
   await pg.route(/vendor\/firebase-database-compat/, r => r.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
   await pg.route('https://script.google.com/**', ruta => {
@@ -251,6 +252,25 @@ const H = [
     await pg.evaluate(() => { window.__FB.rechazar = true; });
     const rech = await rpc(pg, 'eliminar_prematricula', { p_clave: await pg.evaluate(() => tokenInterno), p_codigo: 'ABC123' });
     ok('mensaje que indica revisar las reglas de Firebase', /reglas de la base de datos/.test(rech.error || ''), rech.error);
+
+    sec('8b) Con el correo apagado (como está publicado): solo descargas de PDF');
+    const pd = await abrir('/index.html', { dl: true, correo: false }); await entrar(pd);
+    const enviosAntes = google.correos.length + peticiones.length;
+    await pd.evaluate(() => iniciarFicha('antiguo')); await llenarEst(pd, 1, { ...H[0], rut: rut(46000001), nombre: 'Hugo TEST Ocho' }); await pd.click('#btnAddEst'); await llenarEst(pd, 2, { ...H[1], rut: rut(46000002), nombre: 'Iris TEST Nueve' });
+    await llenarApoderado(pd); await enviar(pd); await pd.click('#btnConfirmarResumen'); await pd.waitForTimeout(700); await finalizar(pd);
+    ok('no intenta enviar ningún correo ni muestra «reintentar»', google.correos.length + peticiones.length === enviosAntes && !(await pd.isVisible('#btnReintentarCorreo')));
+    ok('la pantalla final invita a descargar los certificados', /Descarga los certificados en PDF/.test(await pd.textContent('#doneMail')) && (await pd.$$('#doneDescargas button')).length === 2);
+    const dls = [];
+    for (const b of await pd.$$('#doneDescargas button')) { const e = pd.waitForEvent('download'); await b.click(); dls.push(await e); }
+    ok('descarga un archivo por cada estudiante', dls.length === 2);
+    const pdfs = []; for (const x of dls) pdfs.push({ nombre: x.suggestedFilename(), cabecera: fs.readFileSync(await x.path()).slice(0, 5).toString() });
+    ok('los archivos son PDF y se llaman «Certificado_matricula_ficha_N.pdf»', pdfs.every(f => f.cabecera === '%PDF-' && /^Certificado_matricula_ficha_\d+\.pdf$/.test(f.nombre)), JSON.stringify(pdfs));
+    const tokD = await pd.evaluate(() => tokenInterno);
+    await pd.evaluate(() => cerrarAcceso()); await entrar(pd); await pd.click('.admin-link'); await pd.fill('#inputClave', ADMIN); await pd.click('#ovClave .btn-pri'); await pd.waitForTimeout(800);
+    ok('el panel no muestra estado de correo ni botón de reenvío', !/Pendiente|Enviado|✉️/.test(await pd.textContent('#tbodyAdmin')));
+    const eP = pd.waitForEvent('download'); await pd.click('#tbodyAdmin tr:last-child button[title^="Descargar certificado"]'); const dP = await eP;
+    ok('el panel permite descargar el certificado de cualquier matrícula', fs.readFileSync(await dP.path()).slice(0, 5).toString() === '%PDF-' && /Certificado_matricula_ficha_/.test(dP.suggestedFilename()));
+    ok('sin errores en esta pantalla', pd.errores.length === 0 && (await pd.evaluate(() => window.__csp)).length === 0, pd.errores.join('|'));
 
     sec('9) Sin errores de consola en toda la prueba');
     ok('sin errores de JavaScript ni violaciones de la política de seguridad', pg.errores.length === 0 && (await pg.evaluate(() => window.__csp)).length === 0, pg.errores.join('|'));

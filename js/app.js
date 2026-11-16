@@ -14,6 +14,9 @@ LOGO_IMG.src = LOGO_SRC;
 //    La dirección del script y su clave de envío (deben ser iguales a las del script, ver apps-script/Code.gs).
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzFw8rbYDDGh9ZDQ5oC_sHcwnnP1BnOuWFzkKrXtaOaaktPtVRnnbFhcFL4jrWMU8fP/exec";
 const APPS_SCRIPT_SECRETO = "ZZWBOa92quuP2qK3la7vVYhc";
+// Envío automático del certificado por correo: apagado por ahora. Los certificados se descargan en PDF (pantalla final y panel).
+// Para activarlo: poner true y dejar en APPS_SCRIPT_URL la dirección de un script publicado (ver apps-script/Code.gs).
+const ENVIAR_CORREO = false;
 /* ========================================================== */
 
 /* ---------- Seguridad: texto seguro en la página ----------
@@ -1034,6 +1037,7 @@ const ERRORES_CORREO = {
 async function enviarCorreoSolicitud(solicitudId, fichas, token){
   const correo = fichas[0].apoderado.correo;
   const n = fichas.length;
+  if (!ENVIAR_CORREO) return { estado: "desactivado", msg: "Las matrículas quedaron guardadas. Descarga los certificados en PDF con los botones de abajo." };
   if (!correo) return { estado: "sin_correo", msg: "El apoderado no registró correo, por lo que no se envió comprobante por email." };
   if (!correoListo) return { estado: "no_configurado", msg: "Los datos se guardaron. El envío automático de correos no está configurado todavía." };
   // 1) un PDF independiente por estudiante; si falla uno, no se envía ninguno
@@ -1137,10 +1141,8 @@ async function finalizarMatricula(){
   }
 }
 
-// Descarga el certificado PDF de una ficha (sirve aunque el correo no salga)
-function descargarCertificado(folio){
-  const f = solicitudGuardada && solicitudGuardada.fichas.find(x => String(x.folio) === String(folio));
-  if (!f) return;
+// Descarga el certificado PDF de una ficha (f = { folio, fechaRegistro, tipo, estudiante, apoderado, suplente })
+function descargarPdfDeFicha(f){
   try{
     const bytes = Uint8Array.from(atob(generarComprobantePDFBase64(f)), c => c.charCodeAt(0));
     const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
@@ -1151,6 +1153,14 @@ function descargarCertificado(folio){
     console.error(err);
     aviso("No se pudo generar el certificado", "Ocurrió un problema al crear el PDF. Inténtalo nuevamente.");
   }
+}
+function descargarCertificado(folio){
+  const f = solicitudGuardada && solicitudGuardada.fichas.find(x => String(x.folio) === String(folio));
+  if (f) descargarPdfDeFicha(f);
+}
+function descargarCertificadoPanel(key){
+  const r = registros.find(x => x._key === key);
+  if (r) descargarPdfDeFicha({ folio: r.folio, fechaRegistro: r.fechaRegistro, tipo: r.tipo, estudiante: r.estudiante || {}, apoderado: r.apoderado || {}, suplente: r.suplente || null });
 }
 
 function listaFolios(fichas){
@@ -1166,7 +1176,7 @@ function mostrarFinal(resultado, guardado){
       filaResumen("Ficha", f.folio), filaResumen("Curso 2027", f.estudiante.cursoMatricula || "No indicado"),
       filaResumen("Condición", f.tipo === "antiguo" ? "Estudiante antiguo" : "Estudiante nuevo"),
       el("div", { class: "resumen-fila" }, el("b", { texto: "Matrícula:" }), el("span", { class: "estado ok", texto: "Guardada" }),
-        el("b", { texto: "Certificado:" }), el("span", { class: "estado " + (resultado.estado === "enviado" ? "ok" : "pend"), texto: resultado.estado === "enviado" ? "Enviado" : "Pendiente" })))) : []));
+        el("b", { texto: "Certificado:" }), el("span", { class: "estado " + (resultado.estado === "enviado" ? "ok" : "pend"), texto: resultado.estado === "enviado" ? "Enviado" : resultado.estado === "desactivado" ? "Para descargar" : "Pendiente" })))) : []));
   document.getElementById("doneMail").textContent = resultado.msg;
   document.getElementById("doneDescargas").replaceChildren(...fichas.map(f =>
     el("button", { type: "button", class: "btn btn-ghost", texto: `⬇️ Descargar certificado PDF (Ficha ${f.folio})`, datos: { click: "descargarCertificado", args: JSON.stringify([String(f.folio)]) } })));
@@ -1326,6 +1336,7 @@ function filaMatricula(r){
     el("button", { class: "btn-del", type: "button", title: titulo, texto: icono, datos: { click: accion, args: JSON.stringify(args) } });
   const acciones = el("div", { class: "acciones" },
     boton("Imprimir ficha de matrícula", "🖨️", "imprimirFichaMatricula", [r._key]),
+    boton("Descargar certificado de matrícula (PDF)", "📄", "descargarCertificadoPanel", [r._key]),
     boton("Cambiar N° de ficha", "#", "abrirFolioFicha", [r._key]),
     boton("Editar matrícula", "✏️", "editarMatricula", [r._key]),
     boton("Eliminar matrícula", "🗑️", "confirmarEliminar", [r._key, r.estudiante.nombre ?? "este estudiante"]));
@@ -1349,7 +1360,7 @@ const ESTADOS_CORREO = {
 };
 function celdaSolicitud(r){
   if (!r._solicitud) return el("td", { texto: "—" });
-  const est = ESTADOS_CORREO[r._correo];
+  const est = ENVIAR_CORREO ? ESTADOS_CORREO[r._correo] : null;
   const td = el("td", { class: "celda-sol" },
     el("span", { class: "sol-chip", title: "Solicitud " + r._solicitud, texto: `${r._solicitud.slice(0, 6).toUpperCase()} · ${r._orden}/${r._hermanos}` }));
   if (est){
@@ -1591,7 +1602,7 @@ const ACCIONES = {
   toggleSub, validarClave, volverInicio,
   // varios estudiantes y correo
   anadirEstudiante, cambiarTipo, pedirQuitarEstudiante, confirmarQuitarEstudiante, confirmarResumen, editarEstudianteResumen,
-  reintentarCorreo, reenviarCorreo, descargarCertificado,
+  reintentarCorreo, reenviarCorreo, descargarCertificado, descargarCertificadoPanel,
   // botones de las filas del panel
   imprimirFichaMatricula, abrirFolioFicha, editarMatricula, confirmarEliminar
 };
