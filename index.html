@@ -262,7 +262,7 @@
             <input type="tel" id="a_cel" placeholder="+56 9 1234 5678">
           </div>
           <div class="field">
-            <label>Correo electrónico <span class="opt">(opcional — aquí llegará el comprobante)</span></label>
+            <label>Correo electrónico <span class="opt">(opcional)</span></label>
             <input type="email" id="a_mail">
           </div>
           <div class="field">
@@ -399,8 +399,7 @@
   <section id="scr-memos" class="screen">
     <div class="banner-verificar">⚠️ Por favor verifica que todos los datos estén correctos antes de imprimir.</div>
     <div class="memo-intro">
-      <b>Documentos generados.</b> Imprime las tres autorizaciones y entrégalas al apoderado para su <b>firma manual</b>. Una vez firmadas, presiona «Imprimir documentos» y luego «Finalizar matrícula» para guardar los datos y enviar el comprobante al correo del apoderado.
-    </div>
+      <b>Documentos generados.</b> Imprime las tres autorizaciones y entrégalas al apoderado para su <b>firma manual</b>. Una vez firmadas, presiona «Imprimir documentos» y luego «Finalizar matrícula» para guardar los datos y descargar el certificado de matrícula en PDF.</div>
     <div id="memosPantalla"></div>
     <div class="memo-actions">
       <button class="btn btn-ghost" data-click="mostrar" data-args='["scr-form"]'>← Volver a la ficha</button>
@@ -486,7 +485,7 @@
 <div class="overlay" id="ovFirma">
   <div class="modal">
     <h3>Firma del apoderado</h3>
-    <p><b>El apoderado debe firmar los tres documentos impresos para seguir con el proceso.</b><br><br>¿Deseas finalizar la matrícula? Al finalizar, los datos se guardarán en la base de datos y se enviará un comprobante al correo del apoderado.</p>
+    <p><b>El apoderado debe firmar los tres documentos impresos para seguir con el proceso.</b><br><br>¿Deseas finalizar la matrícula? Al finalizar, los datos se guardarán en la base de datos y podrás descargar el certificado de matrícula en PDF.</p>
     <div class="modal-btns">
       <button class="btn btn-ghost" data-click="cerrar" data-args='["ovFirma"]'>Aún no</button>
       <button class="btn btn-pri" id="btnFinalizar" data-click="finalizarMatricula">Finalizar ✓</button>

@@ -34,13 +34,13 @@ público**, así que ordenan el uso pero no son seguridad fuerte: quien lea el c
 No hace falta cambiar nada: se usan los mismos lugares de siempre (`matriculas2027`, `prematriculas2027`, `contadorFolio2027`).
 Las solicitudes (números de ficha reservados y estado del correo) se guardan dentro de `matriculas2027/_solicitudes`.
 
-## Correo (Google Apps Script)
+## Certificados en PDF y correo
 
-Funciona con el script de Google que ya está publicado: sin cambios. Si una solicitud trae varios estudiantes, cada uno
-recibe su correo con su certificado PDF.
+El **envío por correo está apagado** (`ENVIAR_CORREO = false` en `js/app.js`). El certificado de matrícula se descarga en PDF:
+en la pantalla final (un botón por estudiante) y en el panel de encargados (botón 📄 de cada fila).
 
-Opcional: `apps-script/Code.gs` es una versión nueva que envía **un solo correo** con todos los certificados y no repite
-envíos. Para usarla, pégala en el script y publica una *Nueva versión* (la URL no cambia). La página detecta cuál de los dos hay.
+Para volver a activar el correo: publicar `apps-script/Code.gs` como aplicación web en la cuenta de Gmail que enviará los
+correos, poner su URL `/exec` en `APPS_SCRIPT_URL` y cambiar `ENVIAR_CORREO` a `true`.
 
 ## Antes de matricular de verdad
 
